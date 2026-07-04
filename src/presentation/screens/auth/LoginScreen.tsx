@@ -17,22 +17,15 @@ interface Props {
   navigation: any;
 }
 
-export default function SignUpScreen({ navigation }: Props) {
+export default function LoginScreen({ navigation }: Props) {
   // Form state
-  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-
-  // Visibility toggles
   const [showPassword, setShowPassword] = useState(false);
-  const [agree, setAgree] = useState(false);
 
   // Handle form submission
   const handleSubmit = () => {
-    if (agree) {
-      navigation.replace("MainTabs");
-    }
+    navigation.replace("MainTabs");
   };
 
   return (
@@ -41,8 +34,8 @@ export default function SignUpScreen({ navigation }: Props) {
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
       {/* Background glow circles */}
-      <View style={styles.glowTopRight} />
-      <View style={styles.glowBottomLeft} />
+      <View style={styles.glowTopLeft} />
+      <View style={styles.glowBottomRight} />
 
       {/* Keyboard-aware scroll view */}
       <KeyboardAvoidingView
@@ -74,32 +67,18 @@ export default function SignUpScreen({ navigation }: Props) {
             <View style={styles.logoCircle}>
               <Text style={styles.logoIcon}>✦</Text>
             </View>
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Join Pico today</Text>
+            <Text style={styles.appName}>Pico</Text>
+            <Text style={styles.title}>Welcome Back</Text>
+            <Text style={styles.subtitle}>Sign in to continue</Text>
           </View>
 
           {/* Form fields */}
-          {/* Full Name */}
-          <Text style={styles.label}>Full Name</Text>
-          <View style={styles.inputWrapper}>
-            <Text style={styles.inputIcon}>👤</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="John Doe"
-              placeholderTextColor={COLORS.textHint}
-              value={fullName}
-              onChangeText={setFullName}
-              autoCapitalize="words"
-            />
-          </View>
-
-          {/* Email */}
-          <Text style={styles.label}>Email</Text>
+          {/* Email field */}
           <View style={styles.inputWrapper}>
             <Text style={styles.inputIcon}>✉️</Text>
             <TextInput
               style={styles.input}
-              placeholder="name@company.com"
+              placeholder="Email Address"
               placeholderTextColor={COLORS.textHint}
               keyboardType="email-address"
               autoCapitalize="none"
@@ -108,13 +87,12 @@ export default function SignUpScreen({ navigation }: Props) {
             />
           </View>
 
-          {/* Password */}
-          <Text style={styles.label}>Password</Text>
+          {/* Password field */}
           <View style={styles.inputWrapper}>
             <Text style={styles.inputIcon}>🔒</Text>
             <TextInput
               style={styles.input}
-              placeholder="••••••••"
+              placeholder="Password"
               placeholderTextColor={COLORS.textHint}
               secureTextEntry={!showPassword}
               value={password}
@@ -125,61 +103,30 @@ export default function SignUpScreen({ navigation }: Props) {
               activeOpacity={0.7}
               onPress={() => setShowPassword(!showPassword)}
             >
-              <Text style={styles.inputIcon}>{showPassword ? "🙈" : "👁️"}</Text>
+              <Text style={styles.inputIcon}>
+                {showPassword ? "🙈" : "👁️"}
+              </Text>
             </TouchableOpacity>
           </View>
 
-          {/* Confirm Password */}
-          <Text style={styles.label}>Confirm Password</Text>
-          <View style={styles.inputWrapper}>
-            <Text style={styles.inputIcon}>🛡️</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="••••••••"
-              placeholderTextColor={COLORS.textHint}
-              secureTextEntry
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-            />
-          </View>
-
-          {/* Terms checkbox */}
-          <TouchableOpacity
-            activeOpacity={0.7}
-            style={styles.checkboxRow}
-            onPress={() => setAgree(!agree)}
-          >
-            {/* Checkbox */}
-            <View style={[styles.checkbox, agree && styles.checkboxChecked]}>
-              {agree && <Text style={styles.checkmark}>✓</Text>}
-            </View>
-            <Text style={styles.checkboxText}>
-              I agree to the{" "}
-              <Text style={styles.checkboxLink}>Terms of Service</Text> and{" "}
-              <Text style={styles.checkboxLink}>Privacy Policy</Text>
-            </Text>
+          {/* Forgot password link */}
+          <TouchableOpacity activeOpacity={0.7} style={styles.forgotButton}>
+            <Text style={styles.forgotText}>Forgot Password?</Text>
           </TouchableOpacity>
 
-          {/* Submit button */}
+          {/* Login button */}
           <TouchableOpacity
             activeOpacity={0.7}
-            style={[styles.submitButton, !agree && styles.submitButtonDisabled]}
+            style={styles.submitButton}
             onPress={handleSubmit}
           >
-            <Text
-              style={[
-                styles.submitButtonText,
-                !agree && styles.submitButtonTextDisabled,
-              ]}
-            >
-              Create Account
-            </Text>
+            <Text style={styles.submitButtonText}>Log In</Text>
           </TouchableOpacity>
 
-          {/* Divider: OR JOIN WITH */}
+          {/* Divider: OR CONTINUE WITH */}
           <View style={styles.dividerRow}>
             <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>OR JOIN WITH</Text>
+            <Text style={styles.dividerText}>OR CONTINUE WITH</Text>
             <View style={styles.dividerLine} />
           </View>
 
@@ -190,25 +137,25 @@ export default function SignUpScreen({ navigation }: Props) {
               style={styles.socialButton}
               onPress={() => navigation.replace("MainTabs")}
             >
-              <Text style={styles.socialText}> Google</Text>
+              <Text style={styles.socialText}>Google</Text>
             </TouchableOpacity>
             <TouchableOpacity
               activeOpacity={0.7}
               style={styles.socialButton}
               onPress={() => navigation.replace("MainTabs")}
             >
-              <Text style={styles.socialText}> Facebook</Text>
+              <Text style={styles.socialText}>Facebook</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Footer: login link */}
+          {/* Footer: signup link */}
           <View style={styles.footer}>
-            <Text style={styles.footerText}>Already have an account? </Text>
+            <Text style={styles.footerText}>Don't have an account? </Text>
             <TouchableOpacity
               activeOpacity={0.7}
-              onPress={() => navigation.navigate("Login")}
+              onPress={() => navigation.navigate("SignUp")}
             >
-              <Text style={styles.footerLink}>Login</Text>
+              <Text style={styles.footerLink}>Sign Up</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -233,24 +180,24 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
 
-  glowTopRight: {
+  glowTopLeft: {
     position: "absolute",
     top: -60,
-    right: -60,
+    left: -60,
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: "rgba(0,191,166,0.05)",
+    backgroundColor: "rgba(38,34,119,0.08)",
   },
 
-  glowBottomLeft: {
+  glowBottomRight: {
     position: "absolute",
     bottom: -60,
-    left: -60,
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: "rgba(38,34,119,0.08)",
+    right: -60,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: "rgba(0,191,166,0.05)",
   },
 
   backButton: {
@@ -268,7 +215,7 @@ const styles = StyleSheet.create({
 
   header: {
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: 32,
   },
 
   logoCircle: {
@@ -291,8 +238,15 @@ const styles = StyleSheet.create({
     color: COLORS.surface,
   },
 
-  title: {
+  appName: {
     fontSize: 24,
+    fontWeight: "bold",
+    color: COLORS.textPrimary,
+    marginBottom: 4,
+  },
+
+  title: {
+    fontSize: 20,
     fontWeight: "bold",
     color: COLORS.textPrimary,
     marginBottom: 4,
@@ -303,81 +257,43 @@ const styles = StyleSheet.create({
     color: COLORS.textHint,
   },
 
-  label: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: COLORS.textSecondary,
-    marginBottom: 6,
-    marginLeft: 4,
-  },
-
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: COLORS.inputBg,
-    borderRadius: 12,
+    borderRadius: 14,
     paddingHorizontal: 14,
-    height: 52,
+    height: 56,
     marginBottom: 14,
   },
 
   inputIcon: {
     fontSize: 18,
-    marginRight: 8,
+    marginRight: 10,
   },
 
   input: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 15,
     color: COLORS.textPrimary,
   },
 
-  checkboxRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginTop: 4,
-    marginBottom: 20,
-    gap: 10,
+  forgotButton: {
+    alignSelf: "flex-end",
+    marginBottom: 24,
+    marginTop: -4,
   },
 
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    borderWidth: 2,
-    borderColor: COLORS.primary,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 1,
-  },
-
-  checkboxChecked: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-
-  checkmark: {
-    color: COLORS.surface,
+  forgotText: {
     fontSize: 12,
-    fontWeight: "bold",
-  },
-
-  checkboxText: {
-    flex: 1,
-    fontSize: 12,
-    color: COLORS.textHint,
-    lineHeight: 18,
-  },
-
-  checkboxLink: {
-    color: COLORS.primary,
     fontWeight: "600",
+    color: COLORS.primary,
   },
 
   submitButton: {
     backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    height: 52,
+    borderRadius: 14,
+    height: 56,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: COLORS.primary,
@@ -385,22 +301,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
-  },
-
-  submitButtonDisabled: {
-    backgroundColor: COLORS.divider,
-    shadowOpacity: 0,
-    elevation: 0,
+    marginBottom: 4,
   },
 
   submitButtonText: {
     color: COLORS.surface,
     fontSize: 16,
     fontWeight: "bold",
-  },
-
-  submitButtonTextDisabled: {
-    color: COLORS.textHint,
   },
 
   dividerRow: {
@@ -426,13 +333,13 @@ const styles = StyleSheet.create({
   socialRow: {
     flexDirection: "row",
     gap: 12,
-    marginBottom: 24,
+    marginBottom: 32,
   },
 
   socialButton: {
     flex: 1,
     height: 48,
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: COLORS.divider,
     backgroundColor: COLORS.surface,
@@ -463,5 +370,3 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 });
-
-//checking
