@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(taskkill *)"
+      "Bash(taskkill *)",
+      "Bash(timeout 15 npx expo start --dev-client)"
     ]
   }
 }
