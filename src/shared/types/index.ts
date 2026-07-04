@@ -1,7 +1,7 @@
-export type Priority = "High" | "Medium" | "Low";
-export type TaskCategory = "Work" | "Personal" | "Design" | "Kitchen";
-export type EventType = "meeting" | "review" | "personal";
-export type NotificationType = "task" | "event" | "reminder";
+export type Priority = 'High' | 'Medium' | 'Low';
+export type TaskCategory = 'Work' | 'Personal' | 'Design' | 'Kitchen';
+export type EventType = 'meeting' | 'review' | 'personal';
+export type NotificationType = 'task' | 'event' | 'reminder';
 
 export interface Task {
   id: string;
@@ -34,7 +34,7 @@ export interface NotificationItem {
 
 export interface AssistantMessage {
   id: string;
-  sender: "user" | "assistant";
+  sender: 'user' | 'assistant';
   text: string;
   timestamp: string;
   actions?: { label: string; actionId: string }[];
