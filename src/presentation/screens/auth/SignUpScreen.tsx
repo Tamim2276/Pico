@@ -125,9 +125,7 @@ export default function SignUpScreen({ navigation }: Props) {
               activeOpacity={0.7}
               onPress={() => setShowPassword(!showPassword)}
             >
-              <Text style={styles.inputIcon}>
-                {showPassword ? "🙈" : "👁️"}
-              </Text>
+              <Text style={styles.inputIcon}>{showPassword ? "🙈" : "👁️"}</Text>
             </TouchableOpacity>
           </View>
 
@@ -465,3 +463,5 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 });
+
+//checking
