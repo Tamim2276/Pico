@@ -11,7 +11,7 @@ import Animated, {
 const { width, height } = Dimensions.get("window");
 
 const COLORS = ["#8B5CF6", "#3B82F6", "#EC4899"];
-const PARTICLE_COUNT = 50;
+const PARTICLE_COUNT = 15;
 
 function random(min: number, max: number) {
   return Math.random() * (max - min) + min;
@@ -20,7 +20,7 @@ function random(min: number, max: number) {
 function FloatingParticle() {
   // Fix 1: Freeze the random layout properties so they don't regenerate on re-render
   const config = useMemo(() => {
-    const size = random(10, 25);
+    const size = random(15, 60);
     return {
       startX: random(0, width),
       startY: random(0, height),

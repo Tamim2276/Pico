@@ -1,8 +1,12 @@
 import {View, Text, StyleSheet} from "react-native";
 import ChatInput from "../../components/ChatInput";
-import MeshBackground from "../../components/MeshBackground";   
+import MeshBackground from "../../components/MeshBackground2";   
+import React, { useState } from "react";
+
 
 export function ChatScreen() {
+  const [inputText, setInputText] = useState("");
+
   return (
     <View style={styles.container}>
       <MeshBackground />
@@ -11,7 +15,7 @@ export function ChatScreen() {
       <Text style={styles.header}>Meet Pico</Text>
       <Text style={styles.subheader}>Your Personal Assistant</Text>
       
-      <ChatInput value="" onChangeText={() => {}} />
+      <ChatInput value={inputText} onChangeText={(text) => setInputText(text)} />
     </View>
   );
 }
