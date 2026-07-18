@@ -16,6 +16,11 @@ module.exports = function (api) {
           },
         },
       ],
+
+      // // Required for Reanimated 4 / Expo SDK 54. 
+      // // This MUST be the last item in the plugins array.
+      // "react-native-worklets/plugin",
+      // 'react-native-reanimated/plugin'
     ],
   };
 };
