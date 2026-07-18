@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet } from "react-native";
 
 type Message = {
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "typing";
   text: string;
 };
 
