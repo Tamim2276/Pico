@@ -5,7 +5,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 
 import ChatInput from "../../components/ChatInput";
 import MeshBackground from "../../components/MeshBackground2";
@@ -23,6 +23,17 @@ type Message = {
 export function AssistantScreen() {
   const [inputText, setInputText] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
+
+  const flatListRef = useRef<FlatList>(null);
+
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      flatListRef.current?.scrollToEnd({
+        animated: true,
+      });
+    }
+  }, [messages]);
 
   const handleSend = async () => {
     if (!inputText.trim()) return;
@@ -80,6 +91,7 @@ export function AssistantScreen() {
         <View style={styles.chatArea}>
           
           <FlatList
+            ref={flatListRef}
             data={messages}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => {
