@@ -9,9 +9,9 @@ import { useTheme } from "@presentation/context/ThemeContext";
 import HomeScreen from "@presentation/screens/home/HomeScreen";
 import TasksScreen from "@presentation/screens/tasks/TasksScreen";
 import CalendarScreen from "@presentation/screens/calendar/CalendarScreen";
-import AssistantScreen from "@presentation/screens/assistant/AssistantScreen";
+// Assistant screen import removed (not found). Remove Assistant tab if needed.
 import ProfileScreen from "@presentation/screens/profile/ProfileScreen";
-
+import { AssistantScreen } from "@presentation/screens/assistant/AssistantScreen"; // Import the new AssistantScreen
 const Tab = createBottomTabNavigator();
 
 const TAB_ICONS: Record<string, string> = {
