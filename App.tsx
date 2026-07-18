@@ -1,24 +1,10 @@
-import { NavigationContainer } from "@react-navigation/native";
-import { StatusBar } from "expo-status-bar";
-import { StyleSheet, Text, View } from "react-native";
-import { ChatScreen } from "./src/presentation/screens/assistant/chat";
+import RootNavigator from "@presentation/navigation/RootNavigator";
+import { ThemeProvider } from "@presentation/context/ThemeContext";
 
 export default function App() {
   return (
-    <NavigationContainer>
-      <View style={styles.container}>
-        <StatusBar style="auto" />
-
-        <ChatScreen />
-      </View>
-    </NavigationContainer>
+    <ThemeProvider>
+      <RootNavigator />
+    </ThemeProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-});
