@@ -14,8 +14,12 @@ import {
 interface ChatInputProps {
   value: string;
   onChangeText: (text: string) => void;
+
+  onSend: () => void;
+
   placeholder?: string;
   model?: string;
+
   onAddPress?: () => void;
   onMicPress?: () => void;
   onModelPress?: () => void;
@@ -24,8 +28,11 @@ interface ChatInputProps {
 export default function ChatInput({
   value,
   onChangeText,
+  onSend,
+
   placeholder = "Ask Pico ...",
   model = "Gemma",
+  
   onAddPress,
   onMicPress,
   onModelPress,
@@ -39,6 +46,7 @@ export default function ChatInput({
       <TextInput
         value={value}
         onChangeText={onChangeText}
+        onSubmitEditing={onSend}
         placeholder={placeholder}
         placeholderTextColor="#A3A3A3"
         style={styles.input}
