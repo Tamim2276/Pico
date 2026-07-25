@@ -4,6 +4,8 @@ const config = getDefaultConfig(__dirname);
 
 config.resolver.sourceExts.push("cjs");
 
+config.resolver.assetExts.push("litertlm"); 
+
 config.transformer.getTransformOptions = async () => ({
   transform: {
     experimentalImportSupport: false,
