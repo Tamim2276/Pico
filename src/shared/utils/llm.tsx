@@ -20,21 +20,11 @@ export interface LLMProvider {
 
 const defaultPrompt = 'Hello, introduce yourself briefly.';
 
-/*
- * IMPORTANT:
- *
- * Do NOT use require() for the GGUF here.
- *
- * Metro will try to process the huge GGUF file and can crash with:
- *
- * "Cannot create a string longer than 0x1fffffe8 characters"
- *
- * The GGUF is going to be placed in Android's native assets and copied
- * to the application's filesystem at runtime.
- */
 const MODEL_ASSET_NAME = 'gemma_3_1b_it_q4_k_m.gguf';
 
-const MODEL_LOCAL_PATH = `${RNFS.DocumentDirectoryPath}/${MODEL_ASSET_NAME}`;
+const MODEL_LOCAL_DIR = `${RNFS.ExternalDirectoryPath}/gguf`;
+const MODEL_LOCAL_PATH = `${MODEL_LOCAL_DIR}/${MODEL_ASSET_NAME}`;
+const STOP_WORDS = ['</s>', '<|eot_id|>', '<|end_of_turn|>', '<|endoftext|>'];
 
 type LlamaContext = Awaited<ReturnType<typeof initLlama>>;
 
@@ -48,11 +38,6 @@ const getConfiguredProviderName = (): LLMProviderName => {
   return configuredValue === 'existing' ? 'existing' : 'local';
 };
 
-/**
- * Copy the GGUF from Android's native APK assets into a real filesystem path.
- *
- * llama.rn needs a filesystem path that it can open directly.
- */
 async function getLocalModelPath(): Promise<string> {
   const exists = await RNFS.exists(MODEL_LOCAL_PATH);
 
@@ -61,37 +46,10 @@ async function getLocalModelPath(): Promise<string> {
     return MODEL_LOCAL_PATH;
   }
 
-  console.log(
-    'Copying GGUF from Android native assets:',
-    MODEL_ASSET_NAME,
+  throw new Error(
+    `GGUF model not found at ${MODEL_LOCAL_PATH}. ` +
+      `Copy the model to that path on the device before running Gemma.`,
   );
-
-  try {
-    await RNFS.copyFileAssets(
-      MODEL_ASSET_NAME,
-      MODEL_LOCAL_PATH,
-    );
-  } catch (error) {
-    console.error('Failed to copy GGUF from Android assets:', error);
-
-    throw new Error(
-      `Could not copy ${MODEL_ASSET_NAME} from Android native assets. ` +
-        `Make sure the GGUF was included in android/app/src/main/assets ` +
-        `and that the native app was rebuilt.`,
-    );
-  }
-
-  const copiedFileExists = await RNFS.exists(MODEL_LOCAL_PATH);
-
-  if (!copiedFileExists) {
-    throw new Error(
-      `GGUF copy completed but the file does not exist at ${MODEL_LOCAL_PATH}`,
-    );
-  }
-
-  console.log('GGUF copied successfully to:', MODEL_LOCAL_PATH);
-
-  return MODEL_LOCAL_PATH;
 }
 
 async function ensureLocalContext(): Promise<LlamaContext> {
@@ -154,12 +112,10 @@ export const testGemma = async (
       ],
       n_predict: 160,
       temperature: 0.7,
-      stop: [
-        '',
-        '<|eot_id|>',
-        '<|end_of_turn|>',
-      ],
+      stop: STOP_WORDS,
     });
+
+    console.log('Gemma result text:', result.text);
 
     return result.text;
   } catch (error) {
@@ -213,12 +169,10 @@ class LocalProvider implements LLMProvider {
       ],
       n_predict: 160,
       temperature: 0.7,
-      stop: [
-        '',
-        '<|eot_id|>',
-        '<|end_of_turn|>',
-      ],
+      stop: STOP_WORDS,
     });
+
+    console.log('Gemma result text:', result.text);
 
     return result.text;
   }

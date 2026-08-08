@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import React, { useState, useRef, useEffect } from "react";
 
-import { createLLMProvider } from "../../../shared/utils/llm";
+import { createLLMProvider } from "@shared/utils/llm";
 
 import ChatInput from "../../components/ChatInput";
 import MeshBackground from "../../components/MeshBackground2";
@@ -108,10 +108,11 @@ export function AssistantScreen() {
 
       const raw = typeof result === 'string' ? result : JSON.stringify(result);
       const cleaned = sanitizeGemmaOutput(raw);
+      const finalText = cleaned.trim() || raw.trim() || 'Gemma returned no text.';
       const picoMessage: Message = {
         id: Date.now().toString(),
         role: "assistant",
-        text: cleaned,
+        text: finalText,
       };
 
       setMessages(previous =>
