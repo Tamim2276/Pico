@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import React, { useState, useRef, useEffect } from "react";
 
-import { testGemma } from "../../../shared/utils/llm";
+import { createLLMProvider } from "../../../shared/utils/llm";
 
 import ChatInput from "../../components/ChatInput";
 import MeshBackground from "../../components/MeshBackground2";
@@ -102,7 +102,9 @@ export function AssistantScreen() {
     ]);
 
     try {
-      const result = await testGemma();
+      const provider = createLLMProvider();
+      const prompt = inputText.trim() || "Say hello from Pico";
+      const result = await provider.generate(prompt);
 
       const raw = typeof result === 'string' ? result : JSON.stringify(result);
       const cleaned = sanitizeGemmaOutput(raw);

@@ -40,3 +40,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+
+assets/gemma_3_1b_it_q4_k_m.gguf

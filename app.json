@@ -32,11 +32,28 @@
     "extra": {
       "eas": {
         "projectId": "bc672930-8551-499e-83e0-54b5c0c89df0"
-      }
+      },
+      "llmProvider": "local"
     },
     "plugins": [
       "expo-status-bar",
-      "react-native-litert-lm"
+      "react-native-litert-lm",
+      [
+        "./withLlamaRN.js",
+        {
+          "enableEntitlements": false,
+          "forceCxx20": true,
+          "enableOpenCLAndHexagon": true
+        }
+      ],
+      [
+        "expo-asset",
+        {
+          "assets": [
+            "./assets/gemma_3_1b_it_q4_k_m.gguf"
+          ]
+        }
+      ]
     ]
   }
 }
