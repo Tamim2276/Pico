@@ -12,6 +12,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { COLORS } from "@shared/constants/data";
+import { useAuth } from "@presentation/context/AuthContext";
+import { Alert } from "react-native";
 
 interface Props {
   navigation: any;
@@ -28,10 +30,24 @@ export default function SignUpScreen({ navigation }: Props) {
   const [showPassword, setShowPassword] = useState(false);
   const [agree, setAgree] = useState(false);
 
+  const { register } = useAuth();
+
   // Handle form submission
-  const handleSubmit = () => {
-    if (agree) {
-      navigation.replace("MainTabs");
+  const handleSubmit = async () => {
+    if (!agree) {
+      Alert.alert("Error", "You must agree to the Terms of Service.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      Alert.alert("Error", "Passwords do not match.");
+      return;
+    }
+    
+    try {
+      await register(fullName, email, password);
+      // Navigation is handled automatically by RootNavigator when the user state changes!
+    } catch (error: any) {
+      Alert.alert("Registration Failed", error.message);
     }
   };
 
