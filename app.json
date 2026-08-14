@@ -22,18 +22,46 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.tamim2276.pico"
+      "package": "com.tamim2276.pico",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Pico uses the camera to control the flashlight.",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Pico uses your location to check traffic and weather for rescheduling."
+        }
+      ],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Pico reads your calendar to suggest reschedules."
+        }
+      ],
+      "expo-notifications"
+    ],
+    "owner": "rizwan_133",
     "extra": {
       "eas": {
-        "projectId": "bc672930-8551-499e-83e0-54b5c0c89df0"
+        "projectId": "f2d7686d-402a-4aa2-8a30-45313daaef6c"
       }
-    },
-    "plugins": [
-      "expo-secure-store"
-    ]
+    }
   }
 }
