@@ -2,6 +2,7 @@
 
 # dependencies
 node_modules/
+assets/mobile-actions_q8_ekv1024.litertlm 
 
 # Expo
 .expo/
@@ -39,3 +40,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+
+assets/gemma_3_1b_it_q4_k_m.gguf

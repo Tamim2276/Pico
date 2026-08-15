@@ -4,8 +4,13 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
+  Button,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import React, { useState, useRef, useEffect } from "react";
+
+import { createLLMProvider } from "@shared/utils/llm";
 
 import ChatInput from "../../components/ChatInput";
 import MeshBackground from "../../components/MeshBackground2";
@@ -22,9 +27,22 @@ type Message = {
   text: string;
 };
 
+// Simple sanitizer to clean up function-call tokens from Gemma output
+const sanitizeGemmaOutput = (s: string) => {
+  if (!s) return s;
+  // collapse repeated start tags
+  s = s.replace(/(?:<start_function_call>)+/g, '<start_function_call>');
+  // extract content between start_function_call and escape if present
+  const m = s.match(/<start_function_call>([\s\S]*?)<escape>/);
+  if (m) return m[1].trim();
+  // otherwise strip any angle-bracket tags and trim
+  return s.replace(/<[^>]+>/g, '').trim();
+};
+
 export function AssistantScreen() {
   const [inputText, setInputText] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
+  const [gemmaLoading, setGemmaLoading] = useState(false);
 
   const flatListRef = useRef<FlatList>(null);
 
@@ -101,6 +119,42 @@ export function AssistantScreen() {
     );
   };
 
+  const handleRunGemma = async () => {
+    if (gemmaLoading) return;
+    setGemmaLoading(true);
+    // show typing indicator
+    setMessages(prev => [
+      ...prev,
+      { id: Date.now().toString(), role: 'typing', text: '' },
+    ]);
+
+    try {
+      const provider = createLLMProvider();
+      const prompt = inputText.trim() || "Say hello from Pico";
+      const result = await provider.generate(prompt);
+
+      const raw = typeof result === 'string' ? result : JSON.stringify(result);
+      const cleaned = sanitizeGemmaOutput(raw);
+      const finalText = cleaned.trim() || raw.trim() || 'Gemma returned no text.';
+      const picoMessage: Message = {
+        id: Date.now().toString(),
+        role: "assistant",
+        text: finalText,
+      };
+
+      setMessages(previous =>
+        previous
+          .filter(message => message.role !== "typing")
+          .concat(picoMessage)
+      );
+    } catch (err) {
+      Alert.alert('Gemma error', String(err));
+      setMessages(previous => previous.filter(message => message.role !== 'typing'));
+    } finally {
+      setGemmaLoading(false);
+    }
+  };
+
   return (
     <KeyboardAvoidingView
     style={styles.container}
@@ -146,6 +200,15 @@ export function AssistantScreen() {
         onChangeText={setInputText}
         onSend={handleSend}
       />
+
+      <View style={{ width: '90%', padding: 8 }}>
+        <Button
+          title={gemmaLoading ? 'Running…' : 'Run Gemma'}
+          onPress={handleRunGemma}
+          disabled={gemmaLoading}
+        />
+        {gemmaLoading && <ActivityIndicator style={{ marginTop: 8 }} />}
+      </View>
     </KeyboardAvoidingView>
   );
 }
