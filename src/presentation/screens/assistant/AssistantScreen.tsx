@@ -14,9 +14,11 @@ import { createLLMProvider } from "@shared/utils/llm";
 
 import ChatInput from "../../components/ChatInput";
 import MeshBackground from "../../components/MeshBackground2";
+import ToolMenu from "@presentation/components/ToolMenu";
 import Welcome from "@presentation/components/Welcome";
 import MessageBubble from "../../components/MessageBubble";
 import TypingIndicator from "@presentation/components/TypingIndicator";
+import { rescheduleBus } from "@data/notifications/rescheduleBus";
 
 
 type Message = {
@@ -53,34 +55,59 @@ export function AssistantScreen() {
     }
   }, [messages]);
 
+  // Push a message from Pico into the chat (used by the tools menu).
+  const pushAssistantMessage = (text: string) => {
+    setMessages(previous =>
+      previous.concat({
+        id: `${Date.now().toString()}-tool`,
+        role: "assistant",
+        text,
+      })
+    );
+  };
+
+  // React to Yes/No taps on the reschedule notification.
+  useEffect(() => {
+    const unsubscribe = rescheduleBus.subscribe(choice => {
+      pushAssistantMessage(
+        choice === "yes"
+          ? "Great — let's reschedule. When works better for you? 🗓️"
+          : "No problem, I'll keep your schedule as it is. 👍"
+      );
+    });
+    return unsubscribe;
+  }, []);
+
   const handleSend = async () => {
     if (!inputText.trim()) return;
 
+    const text = inputText;
+    const baseId = Date.now().toString();
+
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: `${baseId}-user`,
       role: "user",
-      text: inputText,
+      text,
     };
 
     setMessages(previous => [
-        ...previous,
-        userMessage,
-        {
-            id: Date.now().toString(),
-            role: "typing",
-            text: "",
-        },
+      ...previous,
+      userMessage,
+      {
+        id: `${baseId}-typing`,
+        role: "typing",
+        text: "",
+      },
     ]);
 
     setInputText("");
-    
-    // dummy delay to simulate Pico's response
-    await new Promise(resolve =>
-      setTimeout(resolve, 1000)
-    );
+
+    // No text parsing yet — tools are triggered from the top-right menu.
+    // (Later: route `text` through Gemma tool-calling here.)
+    await new Promise(resolve => setTimeout(resolve, 800));
 
     const picoMessage: Message = {
-      id: Date.now().toString(),
+      id: `${baseId}-assistant`,
       role: "assistant",
       text: "I am still asleep, go away. 😴",
     };
@@ -139,11 +166,14 @@ export function AssistantScreen() {
   >
       <MeshBackground />
 
+      {/* top-right hamburger with the native-tool buttons */}
+      <ToolMenu onToolResult={pushAssistantMessage} />
+
       {messages.length === 0 ? (
         <Welcome />
       ) : (
         <View style={styles.chatArea}>
-          
+
           <FlatList
             ref={flatListRef}
             data={messages}
@@ -184,16 +214,6 @@ export function AssistantScreen() {
 }
 
 const styles = StyleSheet.create({
-  // container: {
-  //   height: "100%",
-  //   width: "100%",
-  //   backgroundColor: "#131314",
-
-  //   display: "flex",
-  //   flexDirection: "column",
-  //   justifyContent: "center",
-  //   alignItems: "center",
-  // },
   container: {
     display: "flex",
     flexDirection: "column",
