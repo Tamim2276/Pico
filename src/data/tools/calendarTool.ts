@@ -1,4 +1,4 @@
-import * as Calendar from "expo-calendar";
+import * as Calendar from "expo-calendar/legacy";
 import type { Tool, ToolResult } from "@domain/services/tools/Tool";
 
 const DAYS_AHEAD = 7;
@@ -15,7 +15,11 @@ export const calendarTool: Tool = {
   execute: async (): Promise<ToolResult> => {
     const { status } = await Calendar.requestCalendarPermissionsAsync();
     if (status !== "granted") {
-      return { ok: false, message: "I need calendar access to read your events." };
+      return {
+        ok: false,
+        message:
+          "Calendar access is off on this device. Please allow Pico to access Calendar in Settings > Apps > Pico > Permissions > Calendar.",
+      };
     }
 
     const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);

@@ -1,0 +1,49 @@
+[
+  {
+    "name": "toggle_flashlight",
+    "description": "Turn the device flashlight on or off.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": ["on", "off"],
+          "description": "Desired flashlight state."
+        }
+      },
+      "required": ["state"]
+    }
+  },
+  {
+    "name": "battery_status",
+    "description": "Report the device battery level and charging state.",
+    "parameters": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "read_calendar",
+    "description": "List upcoming calendar events for the next 7 days.",
+    "parameters": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "current_location",
+    "description": "Get the device current GPS latitude and longitude.",
+    "parameters": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "fire_notification",
+    "description": "Fire a local reminder notification asking the user to reschedule.",
+    "parameters": {
+      "type": "object",
+      "properties": {}
+    }
+  }
+]
