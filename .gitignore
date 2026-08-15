@@ -43,3 +43,6 @@ yarn-error.*
 
 
 assets/gemma_3_1b_it_q4_k_m.gguf
+/node_modules_backup
+gemma_3_1b_it_q4_k_m.gguf
+mobile-actions_q8_ekv1024.litertlm

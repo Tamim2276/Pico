@@ -38,6 +38,9 @@
     },
     "plugins": [
       "expo-secure-store",
+      "expo-notifications",
+      "expo-status-bar",
+      "react-native-litert-lm",
       [
         "expo-camera",
         {
@@ -57,18 +60,6 @@
           "calendarPermission": "Pico reads your calendar to suggest reschedules."
         }
       ],
-      "expo-notifications"
-    ],
-    "owner": "rizwan_133",
-    "extra": {
-      "eas": {
-        "projectId": "bc672930-8551-499e-83e0-54b5c0c89df0"
-      },
-      "llmProvider": "local"
-    },
-    "plugins": [
-      "expo-status-bar",
-      "react-native-litert-lm",
       [
         "./withLlamaRN.js",
         {
@@ -77,9 +68,13 @@
           "enableOpenCLAndHexagon": true
         }
       ]
-    ]
-        "projectId": "f2d7686d-402a-4aa2-8a30-45313daaef6c"
-      }
+    ],
+    "owner": "rizwan_133",
+    "extra": {
+      "eas": {
+        "projectId": "bc672930-8551-499e-83e0-54b5c0c89df0"
+      },
+      "llmProvider": "local"
     }
   }
 }
