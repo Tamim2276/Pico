@@ -4,13 +4,13 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  Button,
-  ActivityIndicator,
   Alert,
 } from "react-native";
 import React, { useState, useRef, useEffect } from "react";
 
 import { createLLMProvider } from "@shared/utils/llm";
+import { parseToolCallFromGemma, executeToolCallFromGemma } from "@shared/utils/toolExecutor";
+import toolList from "@shared/utils/tool_list.json";
 
 import ChatInput from "../../components/ChatInput";
 import MeshBackground from "../../components/MeshBackground2";
@@ -37,6 +37,30 @@ const sanitizeGemmaOutput = (s: string) => {
   if (m) return m[1].trim();
   // otherwise strip any angle-bracket tags and trim
   return s.replace(/<[^>]+>/g, '').trim();
+};
+
+const buildToolAwarePrompt = (userText: string) => {
+  return [
+    "You are Pico. Decide whether to call one tool.",
+    "If the user request matches a tool, return ONLY one JSON object:",
+    '{"name":"tool_name","args":{}}',
+    "Do not output markdown, code fences, or any extra text.",
+    "Never copy parameter schema fields into args.",
+    "Do not output keys like type, properties, required inside args.",
+    "Allowed examples:",
+    '{"name":"current_location","args":{}}',
+    '{"name":"battery_status","args":{}}',
+    '{"name":"read_calendar","args":{}}',
+    '{"name":"fire_notification","args":{}}',
+    '{"name":"toggle_flashlight","args":{"state":"on"}}',
+    '{"name":"toggle_flashlight","args":{"state":"off"}}',
+    "If no tool is relevant, answer normally in plain text.",
+    "Available tools:",
+    JSON.stringify(toolList, null, 2),
+    "",
+    "User request:",
+    userText,
+  ].join("\n");
 };
 
 export function AssistantScreen() {
@@ -79,9 +103,9 @@ export function AssistantScreen() {
   }, []);
 
   const handleSend = async () => {
-    if (!inputText.trim()) return;
+    if (!inputText.trim() || gemmaLoading) return;
 
-    const text = inputText;
+    const text = inputText.trim();
     const baseId = Date.now().toString();
 
     const userMessage: Message = {
@@ -101,41 +125,32 @@ export function AssistantScreen() {
     ]);
 
     setInputText("");
-
-    // No text parsing yet — tools are triggered from the top-right menu.
-    // (Later: route `text` through Gemma tool-calling here.)
-    await new Promise(resolve => setTimeout(resolve, 800));
-
-    const picoMessage: Message = {
-      id: `${baseId}-assistant`,
-      role: "assistant",
-      text: "I am still asleep, go away. 😴",
-    };
-
-    setMessages(previous =>
-      previous
-        .filter(message => message.role !== "typing")
-        .concat(picoMessage)
-    );
-  };
-
-  const handleRunGemma = async () => {
-    if (gemmaLoading) return;
     setGemmaLoading(true);
-    // show typing indicator
-    setMessages(prev => [
-      ...prev,
-      { id: Date.now().toString(), role: 'typing', text: '' },
-    ]);
 
     try {
       const provider = createLLMProvider();
-      const prompt = inputText.trim() || "Say hello from Pico";
-      const result = await provider.generate(prompt);
+      const result = await provider.generate(buildToolAwarePrompt(text));
+      const raw = typeof result === "string" ? result : JSON.stringify(result);
 
-      const raw = typeof result === 'string' ? result : JSON.stringify(result);
+      const toolCall = parseToolCallFromGemma(raw);
+      if (toolCall) {
+        const toolResult = await executeToolCallFromGemma(raw);
+        const picoMessage: Message = {
+          id: Date.now().toString(),
+          role: "assistant",
+          text: toolResult.message || "Tool finished.",
+        };
+
+        setMessages(previous =>
+          previous
+            .filter(message => message.role !== "typing")
+            .concat(picoMessage)
+        );
+        return;
+      }
+
       const cleaned = sanitizeGemmaOutput(raw);
-      const finalText = cleaned.trim() || raw.trim() || 'Gemma returned no text.';
+      const finalText = cleaned.trim() || raw.trim() || "Gemma returned no text.";
       const picoMessage: Message = {
         id: Date.now().toString(),
         role: "assistant",
@@ -148,8 +163,8 @@ export function AssistantScreen() {
           .concat(picoMessage)
       );
     } catch (err) {
-      Alert.alert('Gemma error', String(err));
-      setMessages(previous => previous.filter(message => message.role !== 'typing'));
+      Alert.alert("Gemma error", String(err));
+      setMessages(previous => previous.filter(message => message.role !== "typing"));
     } finally {
       setGemmaLoading(false);
     }
@@ -200,15 +215,6 @@ export function AssistantScreen() {
         onChangeText={setInputText}
         onSend={handleSend}
       />
-
-      <View style={{ width: '90%', padding: 8 }}>
-        <Button
-          title={gemmaLoading ? 'Running…' : 'Run Gemma'}
-          onPress={handleRunGemma}
-          disabled={gemmaLoading}
-        />
-        {gemmaLoading && <ActivityIndicator style={{ marginTop: 8 }} />}
-      </View>
     </KeyboardAvoidingView>
   );
 }
