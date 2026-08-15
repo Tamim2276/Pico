@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -6,28 +6,75 @@ import {
   StyleSheet,
   StatusBar,
   ScrollView,
+  ActivityIndicator,
+  Linking,
+  Platform,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { EVENTS, EVENT_DOTS_BY_DAY } from "@shared/constants/data";
+import * as Calendar from "expo-calendar";
 import { useTheme } from "@presentation/context/ThemeContext";
 
 const WEEKDAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
-
-// July 2026 grid — 1 falls on a Wednesday
-const CALENDAR_WEEKS: (number | null)[][] = [
-  [null, null, null, 1, 2, 3, 4],
-  [5, 6, 7, 8, 9, 10, 11],
-  [12, 13, 14, null, null, null, null],
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
 ];
+const MAX_DOTS = 3;
 
-const EVENT_TYPE_STYLE: Record<
-  string,
-  { bar: string }
-> = {
-  meeting: { bar: "#3D3B8E" },
-  review: { bar: "#00BFA6" },
-  personal: { bar: "#10B981" },
-};
+type PermState = "unknown" | "granted" | "denied";
+
+// Normalised event shape we render from the device calendar.
+interface DeviceEvent {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date | null;
+  allDay: boolean;
+  location: string;
+  calendarColor?: string;
+}
+
+// Build the weeks matrix (numbers + trailing/leading nulls) for a given month.
+function buildWeeks(year: number, month: number): (number | null)[][] {
+  const firstWeekday = new Date(year, month, 1).getDay(); // 0 = Sunday
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < firstWeekday; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const weeks: (number | null)[][] = [];
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+  return weeks;
+}
+
+function sameDay(a: Date, y: number, m: number, d: number): boolean {
+  return a.getFullYear() === y && a.getMonth() === m && a.getDate() === d;
+}
+
+function formatTime(d: Date): string {
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+// Deep-link into the phone's native calendar app at the given date.
+async function openNativeCalendar(date: Date): Promise<void> {
+  const ms = date.getTime();
+  try {
+    if (Platform.OS === "ios") {
+      await Linking.openURL(`calshow:${Math.floor(ms / 1000)}`);
+    } else {
+      await Linking.openURL(`content://com.android.calendar/time/${ms}`);
+    }
+  } catch {
+    try {
+      await Linking.openURL("content://com.android.calendar/time");
+    } catch {
+      // no calendar app available — nothing more we can do
+    }
+  }
+}
 
 interface Props {
   navigation: any;
@@ -37,7 +84,160 @@ export default function CalendarScreen({ navigation }: Props) {
   const { colors, isDarkMode } = useTheme();
   const styles = createStyles(colors);
 
-  const [selectedDay, setSelectedDay] = useState(1);
+  const today = useMemo(() => new Date(), []);
+
+  const [perm, setPerm] = useState<PermState>("unknown");
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [events, setEvents] = useState<DeviceEvent[]>([]);
+
+  const [visibleYear, setVisibleYear] = useState(today.getFullYear());
+  const [visibleMonth, setVisibleMonth] = useState(today.getMonth());
+  const [selectedDay, setSelectedDay] = useState<number>(today.getDate());
+
+  const weeks = useMemo(
+    () => buildWeeks(visibleYear, visibleMonth),
+    [visibleYear, visibleMonth]
+  );
+
+  // Ask for calendar permission once on mount.
+  useEffect(() => {
+    (async () => {
+      const { status } = await Calendar.requestCalendarPermissionsAsync();
+      setPerm(status === "granted" ? "granted" : "denied");
+    })();
+  }, []);
+
+  // Load events for the visible month whenever it (or permission) changes.
+  const loadEvents = useCallback(async () => {
+    if (perm !== "granted") {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    try {
+      const calendars = await Calendar.getCalendarsAsync(
+        Calendar.EntityTypes.EVENT
+      );
+      if (calendars.length === 0) {
+        setEvents([]);
+        return;
+      }
+
+      const colorById: Record<string, string> = {};
+      calendars.forEach((c) => {
+        colorById[c.id] = c.color;
+      });
+
+      const rangeStart = new Date(visibleYear, visibleMonth, 1, 0, 0, 0);
+      const rangeEnd = new Date(visibleYear, visibleMonth + 1, 0, 23, 59, 59);
+
+      const raw = await Calendar.getEventsAsync(
+        calendars.map((c) => c.id),
+        rangeStart,
+        rangeEnd
+      );
+
+      const mapped: DeviceEvent[] = raw.map((e) => ({
+        id: e.id,
+        title: e.title || "(untitled)",
+        start: new Date(e.startDate),
+        end: e.endDate ? new Date(e.endDate) : null,
+        allDay: !!e.allDay,
+        location: e.location || "",
+        calendarColor: colorById[e.calendarId],
+      }));
+
+      setEvents(mapped);
+    } catch {
+      setEvents([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [perm, visibleYear, visibleMonth]);
+
+  useEffect(() => {
+    loadEvents();
+  }, [loadEvents]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadEvents();
+    setRefreshing(false);
+  }, [loadEvents]);
+
+  const requestPermissionAgain = useCallback(async () => {
+    const { status } = await Calendar.requestCalendarPermissionsAsync();
+    if (status === "granted") {
+      setPerm("granted");
+    } else {
+      // Second denial usually means "blocked" — send them to settings.
+      Linking.openSettings().catch(() => {});
+    }
+  }, []);
+
+  // Count of events per day-number in the visible month (for the dots).
+  const dotsByDay = useMemo(() => {
+    const map: Record<number, number> = {};
+    events.forEach((e) => {
+      if (
+        e.start.getFullYear() === visibleYear &&
+        e.start.getMonth() === visibleMonth
+      ) {
+        const d = e.start.getDate();
+        map[d] = (map[d] ?? 0) + 1;
+      }
+    });
+    return map;
+  }, [events, visibleYear, visibleMonth]);
+
+  // Events on the currently selected day, sorted (all-day first, then by time).
+  const dayEvents = useMemo(() => {
+    return events
+      .filter((e) => sameDay(e.start, visibleYear, visibleMonth, selectedDay))
+      .sort((a, b) => {
+        if (a.allDay && !b.allDay) return -1;
+        if (!a.allDay && b.allDay) return 1;
+        return a.start.getTime() - b.start.getTime();
+      });
+  }, [events, visibleYear, visibleMonth, selectedDay]);
+
+  const goToMonth = useCallback(
+    (delta: number) => {
+      let m = visibleMonth + delta;
+      let y = visibleYear;
+      if (m < 0) {
+        m = 11;
+        y -= 1;
+      } else if (m > 11) {
+        m = 0;
+        y += 1;
+      }
+      setVisibleYear(y);
+      setVisibleMonth(m);
+      // Keep "today" selected if we land on the current month, else day 1.
+      setSelectedDay(
+        y === today.getFullYear() && m === today.getMonth()
+          ? today.getDate()
+          : 1
+      );
+    },
+    [visibleMonth, visibleYear, today]
+  );
+
+  const goToToday = useCallback(() => {
+    setVisibleYear(today.getFullYear());
+    setVisibleMonth(today.getMonth());
+    setSelectedDay(today.getDate());
+  }, [today]);
+
+  const selectedDate = new Date(visibleYear, visibleMonth, selectedDay);
+  const isTodaySelected = sameDay(
+    today,
+    visibleYear,
+    visibleMonth,
+    selectedDay
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -48,34 +248,53 @@ export default function CalendarScreen({ navigation }: Props) {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity activeOpacity={0.7} style={styles.monthNavButton}>
-          <Text style={styles.monthNavIcon}>‹</Text>
-        </TouchableOpacity>
-        <Text style={styles.monthLabel}>July 2026</Text>
-        <TouchableOpacity activeOpacity={0.7} style={styles.monthNavButton}>
-          <Text style={styles.monthNavIcon}>›</Text>
-        </TouchableOpacity>
-
-        <View style={styles.headerSpacer} />
-
         <Text style={styles.headerTitle}>Calendar</Text>
-
-        <View style={styles.headerActions}>
-          <TouchableOpacity activeOpacity={0.7} style={styles.iconButton}>
-            <Text style={styles.iconButtonText}>🔍</Text>
-          </TouchableOpacity>
-          <TouchableOpacity activeOpacity={0.7} style={styles.iconButton}>
-            <Text style={styles.iconButtonText}>🔔</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={styles.openAppButton}
+          onPress={() => openNativeCalendar(selectedDate)}
+        >
+          <Text style={styles.openAppButtonText}>📅 Open Calendar app</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
       >
         {/* Calendar grid */}
         <View style={styles.calendarCard}>
+          {/* Month nav row */}
+          <View style={styles.monthRow}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={styles.monthNavButton}
+              onPress={() => goToMonth(-1)}
+            >
+              <Text style={styles.monthNavIcon}>‹</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.monthLabel}>
+              {MONTH_NAMES[visibleMonth]} {visibleYear}
+            </Text>
+
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={styles.monthNavButton}
+              onPress={() => goToMonth(1)}
+            >
+              <Text style={styles.monthNavIcon}>›</Text>
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.weekdayRow}>
             {WEEKDAY_LABELS.map((label, index) => (
               <Text key={`${label}-${index}`} style={styles.weekdayLabel}>
@@ -84,17 +303,16 @@ export default function CalendarScreen({ navigation }: Props) {
             ))}
           </View>
 
-          {CALENDAR_WEEKS.map((week, weekIndex) => (
+          {weeks.map((week, weekIndex) => (
             <View key={weekIndex} style={styles.weekRow}>
               {week.map((day, dayIndex) => {
                 if (day === null) {
-                  return (
-                    <View key={dayIndex} style={styles.dayCell} />
-                  );
+                  return <View key={dayIndex} style={styles.dayCell} />;
                 }
 
                 const isSelected = day === selectedDay;
-                const dotCount = EVENT_DOTS_BY_DAY[day] ?? 0;
+                const isToday = sameDay(today, visibleYear, visibleMonth, day);
+                const dotCount = Math.min(dotsByDay[day] ?? 0, MAX_DOTS);
 
                 return (
                   <TouchableOpacity
@@ -106,12 +324,14 @@ export default function CalendarScreen({ navigation }: Props) {
                     <View
                       style={[
                         styles.dayCircle,
+                        isToday && !isSelected && styles.dayCircleToday,
                         isSelected && styles.dayCircleSelected,
                       ]}
                     >
                       <Text
                         style={[
                           styles.dayNumber,
+                          isToday && !isSelected && styles.dayNumberToday,
                           isSelected && styles.dayNumberSelected,
                         ]}
                       >
@@ -130,91 +350,91 @@ export default function CalendarScreen({ navigation }: Props) {
           ))}
         </View>
 
-        {/* Today's Events */}
+        {/* Section header */}
         <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionHeaderTitle}>Today's Events</Text>
-          <TouchableOpacity activeOpacity={0.7}>
-            <Text style={styles.viewAllLink}>View All</Text>
-          </TouchableOpacity>
+          <Text style={styles.sectionHeaderTitle}>
+            {isTodaySelected
+              ? "Today's Events"
+              : `${MONTH_NAMES[visibleMonth]} ${selectedDay}`}
+          </Text>
+          {!isTodaySelected && (
+            <TouchableOpacity activeOpacity={0.7} onPress={goToToday}>
+              <Text style={styles.viewAllLink}>Today</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
-        {EVENTS.map((event) => {
-          const typeStyle =
-            EVENT_TYPE_STYLE[event.type] ?? EVENT_TYPE_STYLE.meeting;
-
-          return (
+        {/* Permission gate */}
+        {perm === "denied" && (
+          <View style={styles.stateCard}>
+            <Text style={styles.stateEmoji}>🔒</Text>
+            <Text style={styles.stateTitle}>Calendar access needed</Text>
+            <Text style={styles.stateText}>
+              Allow calendar access so Pico can show your real events here.
+            </Text>
             <TouchableOpacity
-              key={event.id}
-              activeOpacity={0.7}
-              style={[styles.eventCard, { borderLeftColor: typeStyle.bar }]}
+              activeOpacity={0.85}
+              style={styles.stateButton}
+              onPress={requestPermissionAgain}
             >
-              <View style={styles.eventBody}>
-                <Text style={styles.eventTitle}>{event.title}</Text>
-                <Text style={styles.eventMetaText}>
-                  🕐 {event.timeStart} - {event.timeEnd}
-                </Text>
-                <Text style={styles.eventMetaText}>📍 {event.location}</Text>
-              </View>
+              <Text style={styles.stateButtonText}>Grant access</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
-              {event.type === "meeting" && event.attendeeAvatars && (
-                <View style={styles.avatarStack}>
-                  {event.attendeeAvatars.map((avatar, index) => (
-                    <View
-                      key={index}
-                      style={[
-                        styles.avatarBubble,
-                        { marginLeft: index === 0 ? 0 : -10 },
-                      ]}
-                    >
-                      <Text style={styles.avatarEmoji}>{avatar}</Text>
-                    </View>
-                  ))}
-                  {!!event.attendeesCount && (
-                    <View style={[styles.avatarBubble, styles.avatarMore]}>
-                      <Text style={styles.avatarMoreText}>
-                        +{event.attendeesCount}
-                      </Text>
-                    </View>
+        {/* Loading */}
+        {perm === "granted" && loading && !refreshing && (
+          <View style={styles.stateCard}>
+            <ActivityIndicator color={colors.primary} />
+            <Text style={[styles.stateText, { marginTop: 12 }]}>
+              Loading your events…
+            </Text>
+          </View>
+        )}
+
+        {/* Empty */}
+        {perm === "granted" && !loading && dayEvents.length === 0 && (
+          <View style={styles.stateCard}>
+            <Text style={styles.stateEmoji}>🗓️</Text>
+            <Text style={styles.stateTitle}>No events</Text>
+            <Text style={styles.stateText}>
+              Nothing scheduled for this day.
+            </Text>
+          </View>
+        )}
+
+        {/* Real events for the selected day */}
+        {perm === "granted" &&
+          !loading &&
+          dayEvents.map((event) => {
+            const bar = event.calendarColor || colors.primary;
+            return (
+              <TouchableOpacity
+                key={event.id}
+                activeOpacity={0.7}
+                style={[styles.eventCard, { borderLeftColor: bar }]}
+                onPress={() => openNativeCalendar(event.start)}
+              >
+                <View style={styles.eventBody}>
+                  <Text style={styles.eventTitle}>{event.title}</Text>
+                  <Text style={styles.eventMetaText}>
+                    🕐{" "}
+                    {event.allDay
+                      ? "All day"
+                      : `${formatTime(event.start)}${
+                          event.end ? ` – ${formatTime(event.end)}` : ""
+                        }`}
+                  </Text>
+                  {!!event.location && (
+                    <Text style={styles.eventMetaText}>
+                      📍 {event.location}
+                    </Text>
                   )}
                 </View>
-              )}
-
-              {event.type === "review" && (
-                <Text style={styles.eventTrailingIcon}>📹</Text>
-              )}
-
-              {event.type === "personal" && (
-                <Text style={styles.eventTrailingIcon}>⤢</Text>
-              )}
-            </TouchableOpacity>
-          );
-        })}
-
-        {/* AI Insight card */}
-        <View style={styles.aiCard}>
-          <View style={styles.aiHeaderRow}>
-            <Text style={styles.aiRobotIcon}>🤖</Text>
-            <Text style={styles.aiLabel}>AI INSIGHT</Text>
-          </View>
-          <Text style={styles.aiHeadline}>
-            You have a free 2-hour block after your review.
-          </Text>
-          <Text style={styles.aiText}>
-            Would you like me to schedule the Q3 Planning draft during this
-            time?
-          </Text>
-          <View style={styles.aiActionsRow}>
-            <TouchableOpacity activeOpacity={0.7} style={styles.aiPrimaryButton}>
-              <Text style={styles.aiPrimaryButtonText}>Yes, please</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={styles.aiSecondaryButton}
-            >
-              <Text style={styles.aiSecondaryButtonText}>Ignore</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+                <Text style={styles.eventTrailingIcon}>›</Text>
+              </TouchableOpacity>
+            );
+          })}
       </ScrollView>
     </SafeAreaView>
   );
@@ -230,56 +450,58 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"]) =>
     header: {
       flexDirection: "row",
       alignItems: "center",
+      justifyContent: "space-between",
       paddingHorizontal: 20,
       paddingTop: 8,
       paddingBottom: 12,
     },
 
-    monthNavButton: {
-      width: 26,
-      height: 26,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-
-    monthNavIcon: {
-      fontSize: 18,
-      color: colors.primary,
-      fontWeight: "600",
-    },
-
-    monthLabel: {
-      fontSize: 14,
-      fontWeight: "600",
-      color: colors.primary,
-      marginHorizontal: 2,
-    },
-
-    headerSpacer: {
-      flex: 1,
-    },
-
     headerTitle: {
-      fontSize: 17,
+      fontSize: 20,
       fontWeight: "bold",
       color: colors.textPrimary,
-      marginRight: 12,
     },
 
-    headerActions: {
+    openAppButton: {
+      backgroundColor: colors.inputBg,
+      borderRadius: 20,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+    },
+
+    openAppButtonText: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: colors.primary,
+    },
+
+    monthRow: {
       flexDirection: "row",
-      gap: 4,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 10,
+      gap: 8,
     },
 
-    iconButton: {
+    monthNavButton: {
       width: 32,
       height: 32,
       alignItems: "center",
       justifyContent: "center",
     },
 
-    iconButtonText: {
-      fontSize: 16,
+    monthNavIcon: {
+      fontSize: 22,
+      color: colors.primary,
+      fontWeight: "600",
+    },
+
+    monthLabel: {
+      fontSize: 15,
+      fontWeight: "700",
+      color: colors.textPrimary,
+      minWidth: 150,
+      textAlign: "center",
     },
 
     scrollContent: {
@@ -334,6 +556,11 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"]) =>
       backgroundColor: colors.primaryDark,
     },
 
+    dayCircleToday: {
+      borderWidth: 1.5,
+      borderColor: colors.primary,
+    },
+
     dayNumber: {
       fontSize: 14,
       fontWeight: "500",
@@ -342,6 +569,11 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"]) =>
 
     dayNumberSelected: {
       color: "#FFFFFF",
+      fontWeight: "700",
+    },
+
+    dayNumberToday: {
+      color: colors.primary,
       fontWeight: "700",
     },
 
@@ -411,118 +643,55 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"]) =>
       marginTop: 2,
     },
 
-    avatarStack: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginLeft: 8,
-    },
-
-    avatarBubble: {
-      width: 28,
-      height: 28,
-      borderRadius: 14,
-      backgroundColor: colors.inputBg,
-      alignItems: "center",
-      justifyContent: "center",
-      borderWidth: 2,
-      borderColor: colors.surface,
-    },
-
-    avatarEmoji: {
-      fontSize: 12,
-    },
-
-    avatarMore: {
-      backgroundColor: colors.primaryDark,
-      marginLeft: -10,
-    },
-
-    avatarMoreText: {
-      fontSize: 10,
-      fontWeight: "bold",
-      color: "#FFFFFF",
-    },
-
     eventTrailingIcon: {
-      fontSize: 20,
-      color: colors.accent,
+      fontSize: 22,
+      color: colors.textHint,
       marginLeft: 8,
     },
 
-    aiCard: {
-      backgroundColor: colors.primaryDark,
-      borderRadius: 20,
-      padding: 20,
-      marginTop: 4,
-      shadowColor: colors.primaryDark,
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.3,
-      shadowRadius: 12,
-      elevation: 6,
-    },
-
-    aiHeaderRow: {
-      flexDirection: "row",
+    stateCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 24,
       alignItems: "center",
-      marginBottom: 14,
-      gap: 8,
+      marginBottom: 12,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.04,
+      shadowRadius: 6,
+      elevation: 1,
     },
 
-    aiRobotIcon: {
-      fontSize: 16,
-    },
-
-    aiLabel: {
-      fontSize: 12,
-      fontWeight: "bold",
-      color: colors.accent,
-      letterSpacing: 0.6,
-    },
-
-    aiHeadline: {
-      fontSize: 18,
-      fontWeight: "bold",
-      color: "#FFFFFF",
-      lineHeight: 24,
+    stateEmoji: {
+      fontSize: 28,
       marginBottom: 10,
     },
 
-    aiText: {
-      fontSize: 14,
-      lineHeight: 20,
-      color: "rgba(255,255,255,0.85)",
-      marginBottom: 18,
+    stateTitle: {
+      fontSize: 15,
+      fontWeight: "700",
+      color: colors.textPrimary,
+      marginBottom: 6,
     },
 
-    aiActionsRow: {
-      flexDirection: "row",
-      gap: 10,
-    },
-
-    aiPrimaryButton: {
-      backgroundColor: colors.accent,
-      borderRadius: 12,
-      paddingHorizontal: 18,
-      paddingVertical: 11,
-    },
-
-    aiPrimaryButtonText: {
-      color: colors.primaryDark,
+    stateText: {
       fontSize: 13,
-      fontWeight: "bold",
+      color: colors.textSecondary,
+      textAlign: "center",
+      lineHeight: 18,
     },
 
-    aiSecondaryButton: {
+    stateButton: {
+      marginTop: 16,
+      backgroundColor: colors.primaryDark,
       borderRadius: 12,
-      paddingHorizontal: 18,
+      paddingHorizontal: 20,
       paddingVertical: 11,
-      borderWidth: 1,
-      borderColor: "rgba(255,255,255,0.3)",
     },
 
-    aiSecondaryButtonText: {
+    stateButtonText: {
       color: "#FFFFFF",
       fontSize: 13,
-      fontWeight: "600",
+      fontWeight: "bold",
     },
   });

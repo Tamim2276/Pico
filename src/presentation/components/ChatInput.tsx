@@ -1,7 +1,6 @@
 import React from "react";
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
   TextInput,
@@ -18,11 +17,9 @@ interface ChatInputProps {
   onSend: () => void;
 
   placeholder?: string;
-  model?: string;
 
   onAddPress?: () => void;
   onMicPress?: () => void;
-  onModelPress?: () => void;
 }
 
 export default function ChatInput({
@@ -31,11 +28,9 @@ export default function ChatInput({
   onSend,
 
   placeholder = "Ask Pico ...",
-  model = "Gemma",
-  
+
   onAddPress,
   onMicPress,
-  onModelPress,
 }: ChatInputProps) {
   return (
     <View style={styles.container}>
@@ -51,18 +46,6 @@ export default function ChatInput({
         placeholderTextColor="#A3A3A3"
         style={styles.input}
       />
-
-      <TouchableOpacity
-        style={styles.modelButton}
-        onPress={onModelPress}
-      >
-        <Text style={styles.modelText}>{model}</Text>
-        <Ionicons
-          name="chevron-down"
-          size={16}
-          color="#D4D4D4"
-        />
-      </TouchableOpacity>
 
       <TouchableOpacity
         onPress={onMicPress}
@@ -102,18 +85,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginLeft: 4,
     paddingVertical: 0,
-  },
-
-  modelButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 8,
-    gap: 2,
-  },
-
-  modelText: {
-    color: "#E3E3E3",
-    fontSize: 16,
-    fontWeight: "500",
   },
 });
