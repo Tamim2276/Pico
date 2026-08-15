@@ -19,9 +19,9 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff",
-        "minSdkVersion": 26
+        "backgroundColor": "#ffffff"
       },
+      "minSdkVersion": 26,
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.tamim2276.pico",
@@ -51,7 +51,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Pico uses your location to check traffic and weather for rescheduling."
+          "locationWhenInUsePermission": "Pico uses your location to check traffic and weather."
         }
       ],
       [
@@ -67,7 +67,9 @@
           "forceCxx20": true,
           "enableOpenCLAndHexagon": true
         }
-      ]
+      ],
+      "expo-asset",
+      "expo-font"
     ],
     "owner": "rizwan_133",
     "extra": {
