@@ -15,6 +15,7 @@ import toolList from "@shared/utils/tool_list.json";
 import ChatInput from "../../components/ChatInput";
 import MeshBackground from "../../components/MeshBackground2";
 import ToolMenu from "@presentation/components/ToolMenu";
+import ModelPickerSheet from "@presentation/components/ModelPickerSheet";
 import Welcome from "@presentation/components/Welcome";
 import MessageBubble from "../../components/MessageBubble";
 import TypingIndicator from "@presentation/components/TypingIndicator";
@@ -39,34 +40,24 @@ const sanitizeGemmaOutput = (s: string) => {
   return s.replace(/<[^>]+>/g, '').trim();
 };
 
-const buildToolAwarePrompt = (userText: string) => {
-  return [
-    "You are Pico. Decide whether to call one tool.",
-    "If the user request matches a tool, return ONLY the function call in this format:",
-    '<start_function_call>{"name":"tool_name","args":{}}<escape>',
-    "Do not output markdown, code fences, or any extra text.",
-    "Never copy parameter schema fields into args.",
-    "Do not output keys like type, properties, required inside args.",
-    "Allowed examples:",
-    '<start_function_call>{"name":"current_location","args":{}}<escape>',
-    '<start_function_call>{"name":"battery_status","args":{}}<escape>',
-    '<start_function_call>{"name":"read_calendar","args":{}}<escape>',
-    '<start_function_call>{"name":"fire_notification","args":{}}<escape>',
-    '<start_function_call>{"name":"toggle_flashlight","args":{"state":"on"}}<escape>',
-    '<start_function_call>{"name":"toggle_flashlight","args":{"state":"off"}}<escape>',
-    "If no tool is relevant, answer normally in plain text.",
-    "Available tools:",
-    JSON.stringify(toolList, null, 2),
-    "",
-    "User request:",
-    userText,
-  ].join("\n");
-};
+const buildToolAwarePrompt = (userText: string) => [
+  "You are Pico.",
+  // "Reply normally unless a tool is clearly needed.",
+  // "Use a tool ONLY when the user asks you to perform an available tool action.",
+  // "Do NOT use a tool for greetings, casual chat, explanations, or questions you can answer yourself.",
+  'Tool call format: <start_function_call>{"name":"TOOL","args":{}}<escape>',
+  // "Output only the tool call when using a tool.",
+  // "Available tools:",
+   JSON.stringify(toolList),
+  "",
+  `User: ${userText}`,
+].join("\n");
 
 export function AssistantScreen() {
   const [inputText, setInputText] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [gemmaLoading, setGemmaLoading] = useState(false);
+  const [modelPickerOpen, setModelPickerOpen] = useState(false);
 
   const flatListRef = useRef<FlatList>(null);
 
@@ -214,6 +205,12 @@ export function AssistantScreen() {
         value={inputText}
         onChangeText={setInputText}
         onSend={handleSend}
+        onAddPress={() => setModelPickerOpen(true)}
+      />
+
+      <ModelPickerSheet
+        visible={modelPickerOpen}
+        onClose={() => setModelPickerOpen(false)}
       />
     </KeyboardAvoidingView>
   );
