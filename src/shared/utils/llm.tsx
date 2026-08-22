@@ -61,10 +61,14 @@ export const AVAILABLE_MODELS: ModelCatalogEntry[] = [
   },
 ];
 
-const MODELS_DIR = `${RNFS.ExternalDirectoryPath}/gguf`;
-const ACTIVE_MODEL_FILE_NAME = 'gemma_3_1b_it_q4_k_m.gguf';
+export const MODELS_DIR = `${RNFS.ExternalDirectoryPath}/gguf`;
 
-const ACTIVE_MODEL_PATH = `${MODELS_DIR}/${ACTIVE_MODEL_FILE_NAME}`;
+const DEFAULT_MODEL_FILE_NAME = 'gemma_3_1b_it_q4_k_m.gguf';
+let activeModelFileName = DEFAULT_MODEL_FILE_NAME;
+let activeModelStateLoaded = false;
+
+const ACTIVE_MODEL_SETTINGS_PATH = `${MODELS_DIR}/active_model.json`;
+
 const STOP_WORDS = ['</s>', '<|eot_id|>', '<|end_of_turn|>', '<|endoftext|>'];
 
 type LlamaContext = Awaited<ReturnType<typeof initLlama>>;
@@ -82,18 +86,86 @@ const getConfiguredProviderName = (): LLMProviderName => {
 export const getModelPath = (fileName: string): string =>
   `${MODELS_DIR}/${fileName}`;
 
+const loadActiveModel = async (): Promise<void> => {
+  if (activeModelStateLoaded) return;
+  activeModelStateLoaded = true;
+
+  try {
+    const content = await RNFS.readFile(ACTIVE_MODEL_SETTINGS_PATH, 'utf8');
+    const parsed = JSON.parse(content) as { fileName?: string };
+
+    if (
+      parsed?.fileName &&
+      (await RNFS.exists(getModelPath(parsed.fileName)))
+    ) {
+      activeModelFileName = parsed.fileName;
+      console.log('[LLM] Restored active model:', parsed.fileName);
+    }
+  } catch {
+    console.log('[LLM] No saved active model; using default.');
+  }
+};
+
+const saveActiveModel = async (fileName: string): Promise<void> => {
+  try {
+    await RNFS.writeFile(
+      ACTIVE_MODEL_SETTINGS_PATH,
+      JSON.stringify({ fileName }),
+      'utf8',
+    );
+  } catch (error) {
+    console.warn('[LLM] Failed to persist active model:', error);
+  }
+};
+
+export const getActiveModel = (): string => activeModelFileName;
+
+export const initActiveModel = (): Promise<void> => loadActiveModel();
+
+export const findCatalogEntry = (
+  fileName: string,
+): ModelCatalogEntry | undefined =>
+  AVAILABLE_MODELS.find(entry => entry.fileName === fileName);
+
+const resetLocalContext = (): void => {
+  localContext = null;
+  localContextPromise = null;
+  localModelLoaded = false;
+};
+
+export const setActiveModel = async (fileName: string): Promise<void> => {
+  if (fileName === activeModelFileName) return;
+
+  const exists = await RNFS.exists(getModelPath(fileName));
+
+  if (!exists) {
+    throw new Error(
+      `Cannot select ${fileName}: it is not downloaded yet.`,
+    );
+  }
+
+  activeModelFileName = fileName;
+  resetLocalContext();
+
+  console.log('[LLM] Active model set to:', fileName);
+
+  await saveActiveModel(fileName);
+};
+
 async function getLocalModelPath(): Promise<string> {
-  const exists = await RNFS.exists(ACTIVE_MODEL_PATH);
+  await loadActiveModel();
+
+  const activeModelPath = getModelPath(activeModelFileName);
+  const exists = await RNFS.exists(activeModelPath);
 
   if (exists) {
-    console.log('GGUF already exists at:', ACTIVE_MODEL_PATH);
-    return ACTIVE_MODEL_PATH;
+    console.log('GGUF already exists at:', activeModelPath);
+    return activeModelPath;
   }
 
   throw new Error(
-    `GGUF model not found at ${ACTIVE_MODEL_PATH}. ` +
-      `Copy the model to that path on the device, or change ` +
-      `ACTIVE_MODEL_FILE_NAME in llm.tsx to match the model you placed.`,
+    `GGUF model not found at ${activeModelPath}. ` +
+      `Download it from the model picker, or copy it to that path manually.`,
   );
 }
 
@@ -198,9 +270,7 @@ class ExistingProvider implements LLMProvider {
   }
 
   async unloadModel(): Promise<void> {
-    localContext = null;
-    localModelLoaded = false;
-    localContextPromise = null;
+    resetLocalContext();
   }
 }
 
@@ -246,9 +316,7 @@ class LocalProvider implements LLMProvider {
   }
 
   async unloadModel(): Promise<void> {
-    localContext = null;
-    localModelLoaded = false;
-    localContextPromise = null;
+    resetLocalContext();
   }
 }
 

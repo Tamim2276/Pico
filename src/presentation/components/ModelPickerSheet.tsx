@@ -7,14 +7,19 @@ import {
   Modal,
   Pressable,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import {
   AVAILABLE_MODELS,
+  getActiveModel,
+  initActiveModel,
   isModelDownloaded,
+  setActiveModel,
   type ModelCatalogEntry,
 } from "@shared/utils/llm";
+import { downloadModel } from "@shared/utils/modelDownloader";
 
 interface ModelPickerSheetProps {
   visible: boolean;
@@ -34,6 +39,8 @@ export default function ModelPickerSheet({
   onClose,
 }: ModelPickerSheetProps) {
   const [rowStates, setRowStates] = useState<Record<string, RowState>>({});
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [activeFileName, setActiveFileName] = useState<string | null>(null);
 
   useEffect(() => {
     if (!visible) return;
@@ -41,6 +48,14 @@ export default function ModelPickerSheet({
     let cancelled = false;
 
     const checkAll = async () => {
+      try {
+        await initActiveModel();
+        if (!cancelled) setActiveFileName(getActiveModel());
+      } catch {
+        // fall back to whatever getActiveModel returns by default
+        if (!cancelled) setActiveFileName(getActiveModel());
+      }
+
       const initial: Record<string, RowState> = {};
       AVAILABLE_MODELS.forEach(entry => {
         initial[entry.id] = { status: "checking" };
@@ -74,13 +89,61 @@ export default function ModelPickerSheet({
     };
   }, [visible]);
 
-  const startDownload = (entry: ModelCatalogEntry) => {
-    // Real RNFS download lands in the next stage; visual-only for now.
-    console.log(`[Models] Download requested for: ${entry.displayName}`);
+  const selectModel = async (entry: ModelCatalogEntry) => {
+    const state = rowStates[entry.id];
+
+    if (!state || state.status !== "downloaded") return;
+    if (activeFileName === entry.fileName) return;
+
+    try {
+      await setActiveModel(entry.fileName);
+      setActiveFileName(entry.fileName);
+    } catch (error: any) {
+      Alert.alert(
+        "Selection failed",
+        `${entry.displayName}: ${error?.message ?? String(error)}`,
+      );
+    }
+  };
+
+  const startDownload = async (entry: ModelCatalogEntry) => {
+    if (downloadingId) return;
+
+    setDownloadingId(entry.id);
     setRowStates(previous => ({
       ...previous,
       [entry.id]: { status: "downloading", percent: 0 },
     }));
+
+    try {
+      await downloadModel(entry, ({ percent }) => {
+        setRowStates(previous => ({
+          ...previous,
+          [entry.id]: { status: "downloading", percent },
+        }));
+      });
+
+      const verified = await isModelDownloaded(entry.fileName);
+
+      setRowStates(previous => ({
+        ...previous,
+        [entry.id]: {
+          status: verified ? "downloaded" : "idle",
+        },
+      }));
+    } catch (error: any) {
+      Alert.alert(
+        "Download failed",
+        `${entry.displayName}: ${error?.message ?? String(error)}`,
+      );
+
+      setRowStates(previous => ({
+        ...previous,
+        [entry.id]: { status: "idle" },
+      }));
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
   return (
@@ -99,9 +162,25 @@ export default function ModelPickerSheet({
           ) : (
             AVAILABLE_MODELS.map(entry => {
               const state = rowStates[entry.id] ?? { status: "checking" };
+              const isActive = activeFileName === entry.fileName;
               return (
                 <View key={entry.id} style={styles.item}>
-                  <Text style={styles.itemLabel}>{entry.displayName}</Text>
+                  <TouchableOpacity
+                    style={styles.itemLabelTouch}
+                    onPress={() => selectModel(entry)}
+                    disabled={state.status !== "downloaded"}
+                    hitSlop={{ top: 10, bottom: 10, left: 10 }}
+                  >
+                    <Text
+                      style={[
+                        styles.itemLabel,
+                        isActive && styles.itemLabelActive,
+                      ]}
+                    >
+                      {entry.displayName}
+                      {isActive ? " *" : ""}
+                    </Text>
+                  </TouchableOpacity>
 
                   {state.status === "checking" && (
                     <ActivityIndicator size="small" color={ICON_COLOR} />
@@ -109,14 +188,18 @@ export default function ModelPickerSheet({
 
                   {state.status === "idle" && (
                     <TouchableOpacity
-                      style={styles.downloadButton}
+                      style={[
+                        styles.downloadButton,
+                        downloadingId && styles.downloadButtonDisabled,
+                      ]}
                       onPress={() => startDownload(entry)}
+                      disabled={!!downloadingId}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
                       <Ionicons
                         name="cloud-download-outline"
                         size={22}
-                        color={ICON_COLOR}
+                        color={downloadingId ? "#5F6368" : ICON_COLOR}
                       />
                     </TouchableOpacity>
                   )}
@@ -194,6 +277,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
+  itemLabelActive: {
+    fontWeight: "700",
+  },
+
+  itemLabelTouch: {
+    flex: 1,
+  },
+
   downloadButton: {
     width: 40,
     height: 40,
@@ -201,6 +292,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#2A2B2C",
     alignItems: "center",
     justifyContent: "center",
+  },
+
+  downloadButtonDisabled: {
+    opacity: 0.5,
   },
 
   progressRow: {
