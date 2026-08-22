@@ -111,6 +111,8 @@ const extractJsonObject = (text: string): Record<string, any> | null => {
 };
 
 export const parseToolCallFromGemma = (raw: string): ParsedToolCall | null => {
+  if (!raw) return null;
+
   const cleaned = raw
     .replace(/<start_function_call>/gi, "")
     .replace(/<escape>/gi, "")
@@ -119,7 +121,16 @@ export const parseToolCallFromGemma = (raw: string): ParsedToolCall | null => {
 
   if (!cleaned) return null;
 
-  const parsed = extractJsonObject(cleaned);
+  let parsed = extractJsonObject(cleaned);
+  
+  if (!parsed) {
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch {
+      return null;
+    }
+  }
+
   if (!parsed) return null;
 
   const name = typeof parsed.name === "string" ? parsed.name : "";

@@ -34,9 +34,9 @@ export default function ChatInput({
 }: ChatInputProps) {
   return (
     <View style={styles.container}>
-      <TouchableOpacity onPress={onAddPress} style={styles.iconButton}>
+      {/* <TouchableOpacity onPress={onAddPress} style={styles.iconButton}>
         <Ionicons name="add" size={26} color="#C4C7C5" />
-      </TouchableOpacity>
+      </TouchableOpacity> */}
 
       <TextInput
         value={value}
@@ -47,7 +47,7 @@ export default function ChatInput({
         style={styles.input}
       />
 
-      <TouchableOpacity
+      {/* <TouchableOpacity
         onPress={onMicPress}
         style={styles.iconButton}
       >
@@ -56,6 +56,10 @@ export default function ChatInput({
           size={24}
           color="#E5E5E5"
         />
+      </TouchableOpacity> */}
+
+      <TouchableOpacity onPress={onAddPress} style={styles.iconButton}>
+        <Ionicons name="add" size={26} color="#C4C7C5" />
       </TouchableOpacity>
     </View>
   );
