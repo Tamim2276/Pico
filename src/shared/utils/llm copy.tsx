@@ -20,55 +20,10 @@ export interface LLMProvider {
 
 const defaultPrompt = 'Hello, introduce yourself briefly.';
 
-export interface ModelCatalogEntry {
-  id: string;
-  displayName: string;
-  fileName: string;
-  downloadUrl: string;
-}
+const MODEL_ASSET_NAME = 'gemma_3_1b_it_q4_k_m.gguf';
 
-// NOTE: llama.rn is picky about model file names (lowercase + underscores only),
-// so `fileName` is the SANITIZED name we save/rename to right after download,
-// not necessarily the original HuggingFace file name in `downloadUrl`.
-export const AVAILABLE_MODELS: ModelCatalogEntry[] = [
-  {
-    id: 'gemma-3-1b-it',
-    displayName: 'Gemma 3 1B Instruct',
-    fileName: 'gemma_3_1b_it_q4_k_m.gguf',
-    downloadUrl:
-      'https://huggingface.co/ggml-org/gemma-3-1b-it-GGUF/resolve/main/gemma-3-1b-it-Q4_K_M.gguf?download=true',
-  },
-  {
-    id: 'smollm2-1-7b-instruct',
-    displayName: 'SmolLM2 1.7B Instruct',
-    fileName: 'smollm2_1_7b_instruct_q4_k_m.gguf',
-    downloadUrl:
-      'https://huggingface.co/HuggingFaceTB/SmolLM2-1.7B-Instruct-GGUF/resolve/main/smollm2-1.7b-instruct-q4_k_m.gguf?download=true',
-  },
-  {
-    id: 'qwen2-5-1-5b-instruct',
-    displayName: 'Qwen2.5 1.5B Instruct',
-    fileName: 'qwen2_5_1_5b_instruct_q4_0.gguf',
-    downloadUrl:
-      'https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_0.gguf?download=true',
-  },
-  {
-    id: 'llama-3-2-1b-instruct',
-    displayName: 'Llama 3.2 1B Instruct',
-    fileName: 'llama_3_2_1b_instruct_q5_k_l.gguf',
-    downloadUrl:
-      'https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q5_K_L.gguf?download=true',
-  },
-];
-
-export const MODELS_DIR = `${RNFS.ExternalDirectoryPath}/gguf`;
-
-const DEFAULT_MODEL_FILE_NAME = 'gemma_3_1b_it_q4_k_m.gguf';
-let activeModelFileName = DEFAULT_MODEL_FILE_NAME;
-let activeModelStateLoaded = false;
-
-const ACTIVE_MODEL_SETTINGS_PATH = `${MODELS_DIR}/active_model.json`;
-
+const MODEL_LOCAL_DIR = `${RNFS.ExternalDirectoryPath}/gguf`;
+const MODEL_LOCAL_PATH = `${MODEL_LOCAL_DIR}/${MODEL_ASSET_NAME}`;
 const STOP_WORDS = ['</s>', '<|eot_id|>', '<|end_of_turn|>', '<|endoftext|>'];
 
 type LlamaContext = Awaited<ReturnType<typeof initLlama>>;
@@ -83,94 +38,19 @@ const getConfiguredProviderName = (): LLMProviderName => {
   return configuredValue === 'existing' ? 'existing' : 'local';
 };
 
-export const getModelPath = (fileName: string): string =>
-  `${MODELS_DIR}/${fileName}`;
-
-const loadActiveModel = async (): Promise<void> => {
-  if (activeModelStateLoaded) return;
-  activeModelStateLoaded = true;
-
-  try {
-    const content = await RNFS.readFile(ACTIVE_MODEL_SETTINGS_PATH, 'utf8');
-    const parsed = JSON.parse(content) as { fileName?: string };
-
-    if (
-      parsed?.fileName &&
-      (await RNFS.exists(getModelPath(parsed.fileName)))
-    ) {
-      activeModelFileName = parsed.fileName;
-      console.log('[LLM] Restored active model:', parsed.fileName);
-    }
-  } catch {
-    console.log('[LLM] No saved active model; using default.');
-  }
-};
-
-const saveActiveModel = async (fileName: string): Promise<void> => {
-  try {
-    await RNFS.writeFile(
-      ACTIVE_MODEL_SETTINGS_PATH,
-      JSON.stringify({ fileName }),
-      'utf8',
-    );
-  } catch (error) {
-    console.warn('[LLM] Failed to persist active model:', error);
-  }
-};
-
-export const getActiveModel = (): string => activeModelFileName;
-
-export const initActiveModel = (): Promise<void> => loadActiveModel();
-
-export const findCatalogEntry = (
-  fileName: string,
-): ModelCatalogEntry | undefined =>
-  AVAILABLE_MODELS.find(entry => entry.fileName === fileName);
-
-const resetLocalContext = (): void => {
-  localContext = null;
-  localContextPromise = null;
-  localModelLoaded = false;
-};
-
-export const setActiveModel = async (fileName: string): Promise<void> => {
-  if (fileName === activeModelFileName) return;
-
-  const exists = await RNFS.exists(getModelPath(fileName));
-
-  if (!exists) {
-    throw new Error(
-      `Cannot select ${fileName}: it is not downloaded yet.`,
-    );
-  }
-
-  activeModelFileName = fileName;
-  resetLocalContext();
-
-  console.log('[LLM] Active model set to:', fileName);
-
-  await saveActiveModel(fileName);
-};
-
 async function getLocalModelPath(): Promise<string> {
-  await loadActiveModel();
-
-  const activeModelPath = getModelPath(activeModelFileName);
-  const exists = await RNFS.exists(activeModelPath);
+  const exists = await RNFS.exists(MODEL_LOCAL_PATH);
 
   if (exists) {
-    console.log('GGUF already exists at:', activeModelPath);
-    return activeModelPath;
+    console.log('GGUF already exists at:', MODEL_LOCAL_PATH);
+    return MODEL_LOCAL_PATH;
   }
 
   throw new Error(
-    `GGUF model not found at ${activeModelPath}. ` +
-      `Download it from the model picker, or copy it to that path manually.`,
+    `GGUF model not found at ${MODEL_LOCAL_PATH}. ` +
+      `Copy the model to that path on the device before running Gemma.`,
   );
 }
-
-export const isModelDownloaded = (fileName: string): Promise<boolean> =>
-  RNFS.exists(getModelPath(fileName));
 
 async function ensureLocalContext(): Promise<LlamaContext> {
   if (localContext && localModelLoaded) {
@@ -270,7 +150,9 @@ class ExistingProvider implements LLMProvider {
   }
 
   async unloadModel(): Promise<void> {
-    resetLocalContext();
+    localContext = null;
+    localModelLoaded = false;
+    localContextPromise = null;
   }
 }
 
@@ -316,7 +198,9 @@ class LocalProvider implements LLMProvider {
   }
 
   async unloadModel(): Promise<void> {
-    resetLocalContext();
+    localContext = null;
+    localModelLoaded = false;
+    localContextPromise = null;
   }
 }
 

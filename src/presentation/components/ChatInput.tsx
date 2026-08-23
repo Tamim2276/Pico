@@ -1,7 +1,6 @@
 import React from "react";
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
   TextInput,
@@ -18,11 +17,9 @@ interface ChatInputProps {
   onSend: () => void;
 
   placeholder?: string;
-  model?: string;
 
   onAddPress?: () => void;
   onMicPress?: () => void;
-  onModelPress?: () => void;
 }
 
 export default function ChatInput({
@@ -31,17 +28,15 @@ export default function ChatInput({
   onSend,
 
   placeholder = "Ask Pico ...",
-  model = "Gemma",
-  
+
   onAddPress,
   onMicPress,
-  onModelPress,
 }: ChatInputProps) {
   return (
     <View style={styles.container}>
-      <TouchableOpacity onPress={onAddPress} style={styles.iconButton}>
+      {/* <TouchableOpacity onPress={onAddPress} style={styles.iconButton}>
         <Ionicons name="add" size={26} color="#C4C7C5" />
-      </TouchableOpacity>
+      </TouchableOpacity> */}
 
       <TextInput
         value={value}
@@ -52,19 +47,7 @@ export default function ChatInput({
         style={styles.input}
       />
 
-      <TouchableOpacity
-        style={styles.modelButton}
-        onPress={onModelPress}
-      >
-        <Text style={styles.modelText}>{model}</Text>
-        <Ionicons
-          name="chevron-down"
-          size={16}
-          color="#D4D4D4"
-        />
-      </TouchableOpacity>
-
-      <TouchableOpacity
+      {/* <TouchableOpacity
         onPress={onMicPress}
         style={styles.iconButton}
       >
@@ -73,6 +56,10 @@ export default function ChatInput({
           size={24}
           color="#E5E5E5"
         />
+      </TouchableOpacity> */}
+
+      <TouchableOpacity onPress={onAddPress} style={styles.iconButton}>
+        <Ionicons name="add" size={26} color="#C4C7C5" />
       </TouchableOpacity>
     </View>
   );
@@ -102,18 +89,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginLeft: 4,
     paddingVertical: 0,
-  },
-
-  modelButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 8,
-    gap: 2,
-  },
-
-  modelText: {
-    color: "#E3E3E3",
-    fontSize: 16,
-    fontWeight: "500",
   },
 });

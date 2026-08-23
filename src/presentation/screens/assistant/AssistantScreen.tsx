@@ -4,19 +4,22 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  Button,
-  ActivityIndicator,
   Alert,
 } from "react-native";
 import React, { useState, useRef, useEffect } from "react";
 
 import { createLLMProvider } from "@shared/utils/llm";
+import { parseToolCallFromGemma, executeToolCallFromGemma } from "@shared/utils/toolExecutor";
+import toolList from "@shared/utils/tool_list.json";
 
 import ChatInput from "../../components/ChatInput";
 import MeshBackground from "../../components/MeshBackground2";
+import ToolMenu from "@presentation/components/ToolMenu";
+import ModelPickerSheet from "@presentation/components/ModelPickerSheet";
 import Welcome from "@presentation/components/Welcome";
 import MessageBubble from "../../components/MessageBubble";
 import TypingIndicator from "@presentation/components/TypingIndicator";
+import { rescheduleBus } from "@data/notifications/rescheduleBus";
 
 
 type Message = {
@@ -37,10 +40,24 @@ const sanitizeGemmaOutput = (s: string) => {
   return s.replace(/<[^>]+>/g, '').trim();
 };
 
+const buildToolAwarePrompt = (userText: string) => [
+  "You are Pico.",
+  // "Reply normally unless a tool is clearly needed.",
+  // "Use a tool ONLY when the user asks you to perform an available tool action.",
+  // "Do NOT use a tool for greetings, casual chat, explanations, or questions you can answer yourself.",
+  'Tool call format: <start_function_call>{"name":"TOOL","args":{}}<escape>',
+  // "Output only the tool call when using a tool.",
+  // "Available tools:",
+   JSON.stringify(toolList),
+  "",
+  `User: ${userText}`,
+].join("\n");
+
 export function AssistantScreen() {
   const [inputText, setInputText] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [gemmaLoading, setGemmaLoading] = useState(false);
+  const [modelPickerOpen, setModelPickerOpen] = useState(false);
 
   const flatListRef = useRef<FlatList>(null);
 
@@ -53,62 +70,78 @@ export function AssistantScreen() {
     }
   }, [messages]);
 
-  const handleSend = async () => {
-    if (!inputText.trim()) return;
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      text: inputText,
-    };
-
-    setMessages(previous => [
-        ...previous,
-        userMessage,
-        {
-            id: Date.now().toString(),
-            role: "typing",
-            text: "",
-        },
-    ]);
-
-    setInputText("");
-    
-    // dummy delay to simulate Pico's response
-    await new Promise(resolve =>
-      setTimeout(resolve, 1000)
-    );
-
-    const picoMessage: Message = {
-      id: Date.now().toString(),
-      role: "assistant",
-      text: "I am still asleep, go away. 😴",
-    };
-
+  // Push a message from Pico into the chat (used by the tools menu).
+  const pushAssistantMessage = (text: string) => {
     setMessages(previous =>
-      previous
-        .filter(message => message.role !== "typing")
-        .concat(picoMessage)
+      previous.concat({
+        id: `${Date.now().toString()}-tool`,
+        role: "assistant",
+        text,
+      })
     );
   };
 
-  const handleRunGemma = async () => {
-    if (gemmaLoading) return;
-    setGemmaLoading(true);
-    // show typing indicator
-    setMessages(prev => [
-      ...prev,
-      { id: Date.now().toString(), role: 'typing', text: '' },
+  // React to Yes/No taps on the reschedule notification.
+  useEffect(() => {
+    const unsubscribe = rescheduleBus.subscribe(choice => {
+      pushAssistantMessage(
+        choice === "yes"
+          ? "Great — let's reschedule. When works better for you? 🗓️"
+          : "No problem, I'll keep your schedule as it is. 👍"
+      );
+    });
+    return unsubscribe;
+  }, []);
+
+  const handleSend = async () => {
+    if (!inputText.trim() || gemmaLoading) return;
+
+    const text = inputText.trim();
+    const baseId = Date.now().toString();
+
+    const userMessage: Message = {
+      id: `${baseId}-user`,
+      role: "user",
+      text,
+    };
+
+    setMessages(previous => [
+      ...previous,
+      userMessage,
+      {
+        id: `${baseId}-typing`,
+        role: "typing",
+        text: "",
+      },
     ]);
+
+    setInputText("");
+    setGemmaLoading(true);
 
     try {
       const provider = createLLMProvider();
-      const prompt = inputText.trim() || "Say hello from Pico";
-      const result = await provider.generate(prompt);
+      const result = await provider.generate(buildToolAwarePrompt(text));
+      const raw = typeof result === "string" ? result : JSON.stringify(result);
 
-      const raw = typeof result === 'string' ? result : JSON.stringify(result);
+      const toolCall = parseToolCallFromGemma(raw);
+      if (toolCall) {
+        const toolResult = await executeToolCallFromGemma(raw);
+        const picoMessage: Message = {
+          id: Date.now().toString(),
+          role: "assistant",
+          text: toolResult.message || "Tool finished.",
+        };
+
+        setMessages(previous =>
+          previous
+            .filter(message => message.role !== "typing")
+            .concat(picoMessage)
+        );
+        return;
+      }
+
       const cleaned = sanitizeGemmaOutput(raw);
-      const finalText = cleaned.trim() || raw.trim() || 'Gemma returned no text.';
+      const finalText = cleaned.trim() || raw.trim() || "Gemma returned no text.";
       const picoMessage: Message = {
         id: Date.now().toString(),
         role: "assistant",
@@ -121,8 +154,8 @@ export function AssistantScreen() {
           .concat(picoMessage)
       );
     } catch (err) {
-      Alert.alert('Gemma error', String(err));
-      setMessages(previous => previous.filter(message => message.role !== 'typing'));
+      Alert.alert("Gemma error", String(err));
+      setMessages(previous => previous.filter(message => message.role !== "typing"));
     } finally {
       setGemmaLoading(false);
     }
@@ -139,11 +172,14 @@ export function AssistantScreen() {
   >
       <MeshBackground />
 
+      {/* top-right hamburger with the native-tool buttons */}
+      <ToolMenu onToolResult={pushAssistantMessage} />
+
       {messages.length === 0 ? (
         <Welcome />
       ) : (
         <View style={styles.chatArea}>
-          
+
           <FlatList
             ref={flatListRef}
             data={messages}
@@ -169,31 +205,18 @@ export function AssistantScreen() {
         value={inputText}
         onChangeText={setInputText}
         onSend={handleSend}
+        onAddPress={() => setModelPickerOpen(true)}
       />
 
-      <View style={{ width: '90%', padding: 8 }}>
-        <Button
-          title={gemmaLoading ? 'Running…' : 'Run Gemma'}
-          onPress={handleRunGemma}
-          disabled={gemmaLoading}
-        />
-        {gemmaLoading && <ActivityIndicator style={{ marginTop: 8 }} />}
-      </View>
+      <ModelPickerSheet
+        visible={modelPickerOpen}
+        onClose={() => setModelPickerOpen(false)}
+      />
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  // container: {
-  //   height: "100%",
-  //   width: "100%",
-  //   backgroundColor: "#131314",
-
-  //   display: "flex",
-  //   flexDirection: "column",
-  //   justifyContent: "center",
-  //   alignItems: "center",
-  // },
   container: {
     display: "flex",
     flexDirection: "column",

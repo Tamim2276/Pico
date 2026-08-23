@@ -142,7 +142,6 @@ export default function HomeScreen() {
               <Text style={styles.activityTitle}>{item.title}</Text>
               <Text style={styles.activitySubtitle}>{item.subtitle}</Text>
             </View>
-            <Text style={styles.activityChevron}>›</Text>
           </TouchableOpacity>
         ))}
 
@@ -169,11 +168,6 @@ export default function HomeScreen() {
           </View>
         </View>
       </ScrollView>
-
-      {/* Floating mic button */}
-      <TouchableOpacity activeOpacity={0.85} style={styles.micButton}>
-        <Text style={styles.micIcon}>🎤</Text>
-      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -370,12 +364,6 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"]) =>
       color: colors.textHint,
     },
 
-    activityChevron: {
-      fontSize: 22,
-      color: colors.textHint,
-      marginLeft: 4,
-    },
-
     aiCard: {
       backgroundColor: colors.primaryDark,
       borderRadius: 20,
@@ -442,26 +430,5 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"]) =>
       color: "#FFFFFF",
       fontSize: 13,
       fontWeight: "600",
-    },
-
-    micButton: {
-      position: "absolute",
-      right: 20,
-      bottom: 24,
-      width: 56,
-      height: 56,
-      borderRadius: 28,
-      backgroundColor: colors.primaryDark,
-      alignItems: "center",
-      justifyContent: "center",
-      shadowColor: colors.primaryDark,
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.35,
-      shadowRadius: 10,
-      elevation: 6,
-    },
-
-    micIcon: {
-      fontSize: 20,
     },
   });
