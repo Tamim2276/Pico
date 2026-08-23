@@ -9,9 +9,9 @@ import {
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { TASKS } from "@shared/constants/data";
 import { useTheme } from "@presentation/context/ThemeContext";
-import type { Task, Priority } from "@shared/types";
+import { useTasks } from "@presentation/context/TaskContext";
+import type { Task, Priority } from "../../domain/entities/Task";
 
 type FilterKey = "All" | "Pending" | "Completed";
 
@@ -38,12 +38,11 @@ export default function TasksScreen({ navigation }: Props) {
 
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<FilterKey>("All");
-  const [tasks, setTasks] = useState<Task[]>(TASKS);
+  const { tasks, toggleTaskCompletion } = useTasks();
 
   const toggleTask = (id: string) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t))
-    );
+    const task = tasks.find(t => t.id === id);
+    if (task) toggleTaskCompletion(task);
   };
 
   const filteredTasks = useMemo(() => {

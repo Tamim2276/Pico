@@ -1,10 +1,10 @@
 import { ITaskRepository } from '../../repositories/ITaskRepository';
-import { Task } from '../../entities/Task';
+import { Task, Priority } from '../../entities/Task';
 
 export class CreateTaskUseCase {
   constructor(private taskRepository: ITaskRepository) {}
 
-  async execute(title: string, description?: string, dueDate?: string): Promise<Task> {
+  async execute(title: string, priority: Priority = 'Medium', category: string = 'General', description?: string, dueDate?: string): Promise<Task> {
     if (!title.trim()) {
       throw new Error('Task title cannot be empty.');
     }
@@ -12,7 +12,9 @@ export class CreateTaskUseCase {
       title,
       description,
       dueDate,
-      isCompleted: false,
+      priority,
+      category,
+      completed: false,
     });
   }
 }

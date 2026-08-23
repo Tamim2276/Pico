@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Calendar from "expo-calendar";
 import { useTheme } from "@presentation/context/ThemeContext";
+import { useEvents } from "@presentation/context/EventContext";
 
 const WEEKDAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
 const MONTH_NAMES = [
@@ -83,6 +84,8 @@ interface Props {
 export default function CalendarScreen({ navigation }: Props) {
   const { colors, isDarkMode } = useTheme();
   const styles = createStyles(colors);
+
+  const { events: localEvents } = useEvents();
 
   const today = useMemo(() => new Date(), []);
 
@@ -176,10 +179,24 @@ export default function CalendarScreen({ navigation }: Props) {
     }
   }, []);
 
+  // Combine native and local events
+  const allEvents = useMemo(() => {
+    const mappedLocal = localEvents.map(e => ({
+      id: e.id,
+      title: e.title,
+      start: new Date(e.startTime),
+      end: new Date(e.endTime),
+      allDay: false,
+      location: e.location || "",
+      calendarColor: colors.primary,
+    }));
+    return [...events, ...mappedLocal];
+  }, [events, localEvents, colors.primary]);
+
   // Count of events per day-number in the visible month (for the dots).
   const dotsByDay = useMemo(() => {
     const map: Record<number, number> = {};
-    events.forEach((e) => {
+    allEvents.forEach((e) => {
       if (
         e.start.getFullYear() === visibleYear &&
         e.start.getMonth() === visibleMonth
@@ -189,18 +206,18 @@ export default function CalendarScreen({ navigation }: Props) {
       }
     });
     return map;
-  }, [events, visibleYear, visibleMonth]);
+  }, [allEvents, visibleYear, visibleMonth]);
 
   // Events on the currently selected day, sorted (all-day first, then by time).
   const dayEvents = useMemo(() => {
-    return events
+    return allEvents
       .filter((e) => sameDay(e.start, visibleYear, visibleMonth, selectedDay))
       .sort((a, b) => {
         if (a.allDay && !b.allDay) return -1;
         if (!a.allDay && b.allDay) return 1;
         return a.start.getTime() - b.start.getTime();
       });
-  }, [events, visibleYear, visibleMonth, selectedDay]);
+  }, [allEvents, visibleYear, visibleMonth, selectedDay]);
 
   const goToMonth = useCallback(
     (delta: number) => {
