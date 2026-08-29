@@ -140,13 +140,14 @@ export default function HomeScreen() {
     if (highPriorityTasks.length > 0) {
       const top = highPriorityTasks[0];
       return {
-        text: `You have ${highPriorityTasks.length} urgent task(s) pending: "${top.title}". Should we schedule time for this?`,
+        text: `You have ${pendingTasks.length} pending task(s), including urgent "${top.title}". Should we schedule time for this?`,
         action: "Focus on this",
       };
     }
     if (pendingTasks.length > 0) {
+      const top = pendingTasks[0];
       return {
-        text: `You have ${pendingTasks.length} task(s) in your list. Keep up the great momentum!`,
+        text: `You have ${pendingTasks.length} pending task(s), like "${top.title}". Keep up the great momentum!`,
         action: "View tasks",
       };
     }

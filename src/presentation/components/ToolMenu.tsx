@@ -19,7 +19,7 @@ interface ToolMenuProps {
   onToolResult: (text: string) => void;
 }
 
-type ActionKey = "flashlight" | "battery" | "calendar" | "location" | "notify" | "create_task" | "read_tasks";
+type ActionKey = "flashlight" | "battery" | "calendar" | "location" | "notify" | "create_task" | "read_tasks" | "daily_briefing";
 
 interface MenuAction {
   key: ActionKey;
@@ -31,6 +31,12 @@ interface MenuAction {
 const ICON_COLOR = "#E3E3E3";
 
 const ACTIONS: MenuAction[] = [
+  {
+    key: "daily_briefing",
+    label: "Daily Briefing",
+    icon: <Ionicons name="sunny-outline" size={22} color={ICON_COLOR} />,
+    run: () => runTool("daily_briefing"),
+  },
   {
     key: "create_task",
     label: "Add Quick Task",

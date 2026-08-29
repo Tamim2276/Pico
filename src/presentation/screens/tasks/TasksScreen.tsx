@@ -122,9 +122,17 @@ export default function TasksScreen({ navigation }: Props) {
         {/* Task list */}
         {filteredTasks.map((task) => {
           const priorityStyle = PRIORITY_STYLES[task.priority];
-          const metaIcon = task.completed
-            ? null
-            : CATEGORY_ICON[task.category] ?? "📅";
+          const categoryTag = task.category || "General";
+          const categoryIcon = CATEGORY_ICON[task.category] || "🏷️";
+
+          const formattedDueDate = task.dueDate
+            ? (() => {
+                const d = new Date(task.dueDate);
+                return !isNaN(d.getTime())
+                  ? `Due ${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+                  : `Due ${task.dueDate}`;
+              })()
+            : null;
 
           return (
             <View key={task.id} style={styles.taskCard}>
@@ -170,7 +178,7 @@ export default function TasksScreen({ navigation }: Props) {
                     <Text style={styles.completedLabel}>Completed</Text>
                   ) : (
                     <Text style={styles.taskMetaText}>
-                      {metaIcon} {task.dueDate}
+                      {formattedDueDate ? `⏰ ${formattedDueDate}` : `${categoryIcon} ${categoryTag}`}
                     </Text>
                   )}
                 </View>
@@ -187,8 +195,9 @@ export default function TasksScreen({ navigation }: Props) {
             <Text style={styles.aiLabel}>Pico AI Assistant</Text>
           </View>
           <Text style={styles.aiText}>
-            You have {highPriorityPendingCount} high-priority tasks due this
-            week. I recommend starting with the Q4 Report review today.
+            {highPriorityPendingCount > 0
+              ? `You have ${highPriorityPendingCount} high-priority task(s) active. I recommend focusing on your top priority first.`
+              : `You have ${tasks.filter(t => !t.completed).length} pending task(s). Great job keeping everything organized!`}
           </Text>
           <TouchableOpacity activeOpacity={0.7} style={styles.aiButton}>
             <Text style={styles.aiButtonText}>Plan My Day</Text>

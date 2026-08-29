@@ -79,5 +79,24 @@
       },
       "required": ["title"]
     }
+  },
+  {
+    "name": "mark_task_completed",
+    "description": "Mark a task as completed or done by its title.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "The title or keyword of the task." }
+      },
+      "required": ["title"]
+    }
+  },
+  {
+    "name": "daily_briefing",
+    "description": "Provide a comprehensive morning or daily briefing of tasks, events, and battery.",
+    "parameters": {
+      "type": "object",
+      "properties": {}
+    }
   }
 ]

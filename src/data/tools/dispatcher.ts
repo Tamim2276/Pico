@@ -68,5 +68,25 @@ export function matchIntent(text: string): ToolCall | null {
     return { name: "current_location", args: {} };
   }
 
+  // 6. Daily Briefing / Morning Briefing
+  if (
+    /\b(daily briefing|morning briefing|brief me|day briefing|summarize my day|what does my day look like|how is my day)\b/.test(t) ||
+    t === "briefing" ||
+    t === "good morning" ||
+    t === "daily summary"
+  ) {
+    return { name: "daily_briefing", args: {} };
+  }
+
+  // 7. Complete Task Fast-Path
+  if (/\b(mark|complete|done|finish)\b/.test(t) && /\b(task|todo|as done|as completed)\b/.test(t)) {
+    const cleaned = t
+      .replace(/\b(mark|complete|done|finish|as done|as completed|task|the|my|please)\b/gi, "")
+      .trim();
+    if (cleaned) {
+      return { name: "mark_task_completed", args: { title: cleaned } };
+    }
+  }
+
   return null;
 }

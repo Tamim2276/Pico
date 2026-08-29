@@ -5,7 +5,7 @@ export type ParsedToolCall = {
   args: Record<string, any>;
 };
 
-const TOOL_ARG_MODE: Record<string, "none" | "flashlight" | "create_task" | "create_event"> = {
+const TOOL_ARG_MODE: Record<string, "none" | "flashlight" | "create_task" | "create_event" | "mark_task_completed"> = {
   toggle_flashlight: "flashlight",
   battery_status: "none",
   read_calendar: "none",
@@ -14,6 +14,8 @@ const TOOL_ARG_MODE: Record<string, "none" | "flashlight" | "create_task" | "cre
   create_task: "create_task",
   read_tasks: "none",
   create_event: "create_event",
+  mark_task_completed: "mark_task_completed",
+  daily_briefing: "none",
 };
 
 const extractFirstBalancedJsonObject = (text: string): string | null => {
@@ -110,6 +112,18 @@ const normalizeArgsForTool = (
       startTime: args.startTime,
       endTime: args.endTime,
       location: args.location,
+    };
+  }
+
+  if (mode === "mark_task_completed") {
+    let rawTitle = "";
+    if (typeof args.title === "string" && args.title.trim()) rawTitle = args.title;
+    else if (typeof args.task === "string" && args.task.trim()) rawTitle = args.task;
+    else if (typeof args.name === "string" && args.name.trim()) rawTitle = args.name;
+    else if (typeof args.description === "string" && args.description.trim()) rawTitle = args.description;
+
+    return {
+      title: rawTitle.trim(),
     };
   }
 
