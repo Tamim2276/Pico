@@ -12,7 +12,7 @@ import {
   RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import * as Calendar from "expo-calendar";
+import * as Calendar from "expo-calendar/legacy";
 import { useTheme } from "@presentation/context/ThemeContext";
 
 const WEEKDAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];

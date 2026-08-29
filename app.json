@@ -70,13 +70,6 @@
       ],
       "expo-asset",
       "expo-font"
-    ],
-    "owner": "rizwan_133",
-    "extra": {
-      "eas": {
-        "projectId": "bc672930-8551-499e-83e0-54b5c0c89df0"
-      },
-      "llmProvider": "local"
-    }
+    ]
   }
 }
