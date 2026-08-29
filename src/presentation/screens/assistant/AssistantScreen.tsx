@@ -55,7 +55,7 @@ const buildToolAwarePrompt = (userText: string, telemetry: string) => [
   '- current_location: {}',
   '- create_task: { "title": "task title", "priority": "High" | "Medium" | "Low", "category": "General" }',
   '- read_tasks: {}',
-  '- create_event: { "title": "event title", "startTime": "ISO date string" }',
+  "- create_event: { \"title\": \"event title\", \"startTime\": \"YYYY-MM-DDTHH:mm:ss\" }",
   "",
   "Examples:",
   "User: Turn on flashlight",
@@ -63,6 +63,9 @@ const buildToolAwarePrompt = (userText: string, telemetry: string) => [
   "",
   "User: Add a task to buy groceries tomorrow with High priority",
   '{"name": "create_task", "args": {"title": "Buy groceries", "priority": "High", "category": "Grocery"}}',
+  "",
+  "User: Add an event Team Standup at 10:00 AM Today",
+  '{"name": "create_event", "args": {"title": "Team Standup", "startTime": "2026-08-30T10:00:00"}}',
   "",
   "User: What tasks do I have?",
   '{"name": "read_tasks", "args": {}}',
@@ -157,9 +160,10 @@ export function AssistantScreen() {
 
     try {
       const now = new Date();
+      const dateIso = now.toISOString().split('T')[0]; // "2026-08-30"
       const timeStr = now.toLocaleDateString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" });
       const pendingCount = tasks.filter(t => !t.completed).length;
-      const telemetry = `[Context: ${timeStr} | Pending Tasks: ${pendingCount}]`;
+      const telemetry = `[Today's Date: ${dateIso} (${timeStr}) | Pending Tasks: ${pendingCount}]`;
 
       const provider = createLLMProvider();
       const result = await provider.generate(buildToolAwarePrompt(text, telemetry));

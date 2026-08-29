@@ -409,8 +409,8 @@ export default function CalendarScreen({ navigation }: Props) {
           </View>
         )}
 
-        {/* Empty */}
-        {perm === "granted" && !loading && dayEvents.length === 0 && (
+        {/* Empty state */}
+        {!loading && dayEvents.length === 0 && (
           <View style={styles.stateCard}>
             <Text style={styles.stateEmoji}>🗓️</Text>
             <Text style={styles.stateTitle}>No events</Text>
@@ -421,8 +421,7 @@ export default function CalendarScreen({ navigation }: Props) {
         )}
 
         {/* Real events for the selected day */}
-        {perm === "granted" &&
-          !loading &&
+        {!loading &&
           dayEvents.map((event) => {
             const bar = event.calendarColor || colors.primary;
             return (

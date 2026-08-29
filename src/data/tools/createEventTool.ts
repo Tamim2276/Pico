@@ -11,26 +11,32 @@ function parseFlexibleDateTime(input?: string): { startIso: string; endIso: stri
   let targetDate = new Date(now);
 
   if (!input) {
-    targetDate.setDate(targetDate.getDate() + 1);
-    targetDate.setHours(20, 0, 0, 0);
+    targetDate.setHours(targetDate.getHours() + 1, 0, 0, 0);
     const end = new Date(targetDate.getTime() + 60 * 60 * 1000);
     return { startIso: targetDate.toISOString(), endIso: end.toISOString() };
   }
 
-  // 1. Direct valid ISO or Date string
-  const directDate = new Date(input);
-  if (!isNaN(directDate.getTime())) {
-    const end = new Date(directDate.getTime() + 60 * 60 * 1000);
-    return { startIso: directDate.toISOString(), endIso: end.toISOString() };
-  }
-
-  // 2. Natural language parsing ("tomorrow", "today", "at 8:00 PM", "8 PM")
   const lower = input.toLowerCase();
+
+  // If input mentions "tomorrow", add 1 day
   if (lower.includes("tomorrow")) {
     targetDate.setDate(targetDate.getDate() + 1);
   }
 
-  // Extract hours and minutes
+  // 1. Check if input is a valid ISO/Date string
+  const directDate = new Date(input);
+  if (!isNaN(directDate.getTime())) {
+    // If the LLM hallucinated a past year (e.g. 2024 instead of current year 2026)
+    if (directDate.getFullYear() !== now.getFullYear()) {
+      targetDate.setHours(directDate.getHours(), directDate.getMinutes(), 0, 0);
+    } else {
+      targetDate = directDate;
+    }
+    const end = new Date(targetDate.getTime() + 60 * 60 * 1000);
+    return { startIso: targetDate.toISOString(), endIso: end.toISOString() };
+  }
+
+  // 2. Natural language time extraction ("10:00 AM", "8 PM", "15:30", etc.)
   const timeMatch = lower.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
   if (timeMatch) {
     let hours = parseInt(timeMatch[1], 10);
@@ -42,8 +48,8 @@ function parseFlexibleDateTime(input?: string): { startIso: string; endIso: stri
 
     targetDate.setHours(hours, minutes, 0, 0);
   } else {
-    // Default to 8:00 PM if no specific time found
-    targetDate.setHours(20, 0, 0, 0);
+    // Default to +1 hour from now
+    targetDate.setHours(targetDate.getHours() + 1, 0, 0, 0);
   }
 
   const endDate = new Date(targetDate.getTime() + 60 * 60 * 1000);
