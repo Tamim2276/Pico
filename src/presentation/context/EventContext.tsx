@@ -3,6 +3,7 @@ import { Event } from '../../domain/entities/Event';
 import { LocalEventRepository } from '../../data/local/LocalEventRepository';
 import { CreateEventUseCase } from '../../domain/usecases/event/CreateEventUseCase';
 import { GetEventsUseCase } from '../../domain/usecases/event/GetEventsUseCase';
+import { taskEventBus } from '../../data/local/taskEvents';
 
 interface EventContextType {
   events: Event[];
@@ -34,6 +35,10 @@ export const EventProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     fetchEvents();
+    const unsubscribe = taskEventBus.subscribe(() => {
+      fetchEvents();
+    });
+    return unsubscribe;
   }, []);
 
   const createEvent = async (title: string, startTime: string, endTime: string, location?: string, description?: string) => {

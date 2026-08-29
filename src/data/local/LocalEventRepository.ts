@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { IEventRepository } from '../../domain/repositories/IEventRepository';
 import { Event } from '../../domain/entities/Event';
 
@@ -6,7 +6,7 @@ const EVENTS_KEY = 'PICO_EVENTS';
 
 export class LocalEventRepository implements IEventRepository {
   async getEvents(): Promise<Event[]> {
-    const data = await AsyncStorage.getItem(EVENTS_KEY);
+    const data = await SecureStore.getItemAsync(EVENTS_KEY);
     return data ? JSON.parse(data) : [];
   }
 
@@ -15,14 +15,15 @@ export class LocalEventRepository implements IEventRepository {
     return events.find(e => e.id === id) || null;
   }
 
-  async createEvent(eventData: Omit<Event, 'id'>): Promise<Event> {
+  async createEvent(eventData: Omit<Event, 'id' | 'createdAt'>): Promise<Event> {
     const events = await this.getEvents();
     const newEvent: Event = {
       ...eventData,
       id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
     };
     events.push(newEvent);
-    await AsyncStorage.setItem(EVENTS_KEY, JSON.stringify(events));
+    await SecureStore.setItemAsync(EVENTS_KEY, JSON.stringify(events));
     return newEvent;
   }
 
@@ -32,13 +33,13 @@ export class LocalEventRepository implements IEventRepository {
     if (index === -1) throw new Error('Event not found');
     
     events[index] = updatedEvent;
-    await AsyncStorage.setItem(EVENTS_KEY, JSON.stringify(events));
+    await SecureStore.setItemAsync(EVENTS_KEY, JSON.stringify(events));
     return updatedEvent;
   }
 
-  async deleteTask(id: string): Promise<void> {
+  async deleteEvent(id: string): Promise<void> {
     const events = await this.getEvents();
     const filteredEvents = events.filter(e => e.id !== id);
-    await AsyncStorage.setItem(EVENTS_KEY, JSON.stringify(filteredEvents));
+    await SecureStore.setItemAsync(EVENTS_KEY, JSON.stringify(filteredEvents));
   }
 }

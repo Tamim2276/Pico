@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { ITaskRepository } from '../../domain/repositories/ITaskRepository';
 import { Task } from '../../domain/entities/Task';
 
@@ -6,7 +6,7 @@ const TASKS_KEY = 'PICO_TASKS';
 
 export class LocalTaskRepository implements ITaskRepository {
   async getTasks(): Promise<Task[]> {
-    const data = await AsyncStorage.getItem(TASKS_KEY);
+    const data = await SecureStore.getItemAsync(TASKS_KEY);
     return data ? JSON.parse(data) : [];
   }
 
@@ -23,7 +23,7 @@ export class LocalTaskRepository implements ITaskRepository {
       createdAt: new Date().toISOString(),
     };
     tasks.push(newTask);
-    await AsyncStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
+    await SecureStore.setItemAsync(TASKS_KEY, JSON.stringify(tasks));
     return newTask;
   }
 
@@ -33,13 +33,13 @@ export class LocalTaskRepository implements ITaskRepository {
     if (index === -1) throw new Error('Task not found');
     
     tasks[index] = updatedTask;
-    await AsyncStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
+    await SecureStore.setItemAsync(TASKS_KEY, JSON.stringify(tasks));
     return updatedTask;
   }
 
   async deleteTask(id: string): Promise<void> {
     const tasks = await this.getTasks();
     const filteredTasks = tasks.filter(t => t.id !== id);
-    await AsyncStorage.setItem(TASKS_KEY, JSON.stringify(filteredTasks));
+    await SecureStore.setItemAsync(TASKS_KEY, JSON.stringify(filteredTasks));
   }
 }

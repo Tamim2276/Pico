@@ -3,6 +3,7 @@ import { Task, Priority } from '../../domain/entities/Task';
 import { LocalTaskRepository } from '../../data/local/LocalTaskRepository';
 import { CreateTaskUseCase } from '../../domain/usecases/task/CreateTaskUseCase';
 import { GetTasksUseCase } from '../../domain/usecases/task/GetTasksUseCase';
+import { taskEventBus } from '../../data/local/taskEvents';
 
 interface TaskContextType {
   tasks: Task[];
@@ -35,6 +36,10 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     fetchTasks();
+    const unsubscribe = taskEventBus.subscribe(() => {
+      fetchTasks();
+    });
+    return unsubscribe;
   }, []);
 
   const createTask = async (title: string, priority: Priority = 'Medium', category: string = 'General', description?: string, dueDate?: string) => {

@@ -20,6 +20,8 @@ import Welcome from "@presentation/components/Welcome";
 import MessageBubble from "../../components/MessageBubble";
 import TypingIndicator from "@presentation/components/TypingIndicator";
 import { rescheduleBus } from "@data/notifications/rescheduleBus";
+import { useTasks } from "@presentation/context/TaskContext";
+import { matchIntent, runTool } from "@data/tools/dispatcher";
 
 
 type Message = {
@@ -40,17 +42,35 @@ const sanitizeGemmaOutput = (s: string) => {
   return s.replace(/<[^>]+>/g, '').trim();
 };
 
-const buildToolAwarePrompt = (userText: string) => [
-  "You are Pico.",
-  // "Reply normally unless a tool is clearly needed.",
-  // "Use a tool ONLY when the user asks you to perform an available tool action.",
-  // "Do NOT use a tool for greetings, casual chat, explanations, or questions you can answer yourself.",
-  'Tool call format: <start_function_call>{"name":"TOOL","args":{}}<escape>',
-  // "Output only the tool call when using a tool.",
-  // "Available tools:",
-   JSON.stringify(toolList),
+const buildToolAwarePrompt = (userText: string, telemetry: string) => [
+  "You are Pico, an offline AI assistant.",
+  telemetry,
+  "When the user asks you to perform an action, call a tool by emitting ONLY a single JSON object.",
+  'Format: {"name": "tool_name", "args": {"param": "value"}}',
+  "",
+  "Available tools:",
+  '- toggle_flashlight: { "state": "on" | "off" }',
+  '- battery_status: {}',
+  '- read_calendar: {}',
+  '- current_location: {}',
+  '- create_task: { "title": "task title", "priority": "High" | "Medium" | "Low", "category": "General" }',
+  '- read_tasks: {}',
+  '- create_event: { "title": "event title", "startTime": "ISO date string" }',
+  "",
+  "Examples:",
+  "User: Turn on flashlight",
+  '{"name": "toggle_flashlight", "args": {"state": "on"}}',
+  "",
+  "User: Add a task to buy groceries tomorrow with High priority",
+  '{"name": "create_task", "args": {"title": "Buy groceries", "priority": "High", "category": "Grocery"}}',
+  "",
+  "User: What tasks do I have?",
+  '{"name": "read_tasks", "args": {}}',
+  "",
+  "If the user is just chatting or greeting, reply with a short friendly response instead of JSON.",
   "",
   `User: ${userText}`,
+  "Pico:"
 ].join("\n");
 
 export function AssistantScreen() {
@@ -58,9 +78,9 @@ export function AssistantScreen() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [gemmaLoading, setGemmaLoading] = useState(false);
   const [modelPickerOpen, setModelPickerOpen] = useState(false);
+  const { tasks } = useTasks();
 
   const flatListRef = useRef<FlatList>(null);
-
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -105,6 +125,23 @@ export function AssistantScreen() {
       text,
     };
 
+    // 1. Layer 1 Fast-Path Router (0ms response for unambiguous commands)
+    const fastCall = matchIntent(text);
+    if (fastCall) {
+      setInputText("");
+      const result = await runTool(fastCall.name, fastCall.args);
+      setMessages(prev => [
+        ...prev,
+        userMessage,
+        {
+          id: `${baseId}-pico`,
+          role: "assistant",
+          text: result.message,
+        },
+      ]);
+      return;
+    }
+
     setMessages(previous => [
       ...previous,
       userMessage,
@@ -119,8 +156,13 @@ export function AssistantScreen() {
     setGemmaLoading(true);
 
     try {
+      const now = new Date();
+      const timeStr = now.toLocaleDateString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" });
+      const pendingCount = tasks.filter(t => !t.completed).length;
+      const telemetry = `[Context: ${timeStr} | Pending Tasks: ${pendingCount}]`;
+
       const provider = createLLMProvider();
-      const result = await provider.generate(buildToolAwarePrompt(text));
+      const result = await provider.generate(buildToolAwarePrompt(text, telemetry));
       const raw = typeof result === "string" ? result : JSON.stringify(result);
 
       const toolCall = parseToolCallFromGemma(raw);

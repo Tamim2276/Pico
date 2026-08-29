@@ -45,5 +45,39 @@
       "type": "object",
       "properties": {}
     }
+  },
+  {
+    "name": "create_task",
+    "description": "Add a new task or todo item to the user's task list.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "The title or description of the task." },
+        "priority": { "type": "string", "enum": ["High", "Medium", "Low"], "description": "Task priority." },
+        "category": { "type": "string", "description": "Category name like Work, Personal, etc." }
+      },
+      "required": ["title"]
+    }
+  },
+  {
+    "name": "read_tasks",
+    "description": "List all pending tasks in the user's task list.",
+    "parameters": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "create_event",
+    "description": "Schedule a new calendar event.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Event title or meeting subject." },
+        "startTime": { "type": "string", "description": "Start time in ISO format or time string." },
+        "location": { "type": "string", "description": "Optional location." }
+      },
+      "required": ["title"]
+    }
   }
 ]

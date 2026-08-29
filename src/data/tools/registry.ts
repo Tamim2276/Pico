@@ -4,6 +4,9 @@ import { batteryTool } from "@data/tools/batteryTool";
 import { calendarTool } from "@data/tools/calendarTool";
 import { locationTool } from "@data/tools/locationTool";
 import { notificationTool } from "@data/tools/notificationTool";
+import { createTaskTool } from "@data/tools/createTaskTool";
+import { readTasksTool } from "@data/tools/readTasksTool";
+import { createEventTool } from "@data/tools/createEventTool";
 
 /**
  * The one place every tool is registered.
@@ -16,6 +19,9 @@ export const toolRegistry: Tool[] = [
   calendarTool,
   locationTool,
   notificationTool,
+  createTaskTool,
+  readTasksTool,
+  createEventTool,
 ];
 
 /** look a tool up by the name the LLM emitted */
