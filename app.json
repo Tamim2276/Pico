@@ -69,14 +69,7 @@
         }
       ],
       "expo-asset",
-      "expo-font",
-      "expo-background-task"
-    ],
-    "extra": {
-      "eas": {
-        "projectId": "f2d7686d-402a-4aa2-8a30-45313daaef6c"
-      }
-    },
-    "owner": "rizwan_133"
+      "expo-font"
+    ]
   }
 }
