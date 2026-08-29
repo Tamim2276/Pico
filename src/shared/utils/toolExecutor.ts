@@ -5,7 +5,7 @@ export type ParsedToolCall = {
   args: Record<string, any>;
 };
 
-const TOOL_ARG_MODE: Record<string, "none" | "flashlight" | "create_task" | "create_event" | "mark_task_completed"> = {
+const TOOL_ARG_MODE: Record<string, "none" | "flashlight" | "create_task" | "create_event" | "mark_task_completed" | "break_down_goal" | "set_timer" | "get_weather"> = {
   toggle_flashlight: "flashlight",
   battery_status: "none",
   read_calendar: "none",
@@ -16,6 +16,9 @@ const TOOL_ARG_MODE: Record<string, "none" | "flashlight" | "create_task" | "cre
   create_event: "create_event",
   mark_task_completed: "mark_task_completed",
   daily_briefing: "none",
+  break_down_goal: "break_down_goal",
+  set_timer: "set_timer",
+  get_weather: "get_weather",
 };
 
 const extractFirstBalancedJsonObject = (text: string): string | null => {
@@ -124,6 +127,31 @@ const normalizeArgsForTool = (
 
     return {
       title: rawTitle.trim(),
+    };
+  }
+
+  if (mode === "break_down_goal") {
+    let rawGoal = "";
+    if (typeof args.goal === "string" && args.goal.trim()) rawGoal = args.goal;
+    else if (typeof args.title === "string" && args.title.trim()) rawGoal = args.title;
+    else if (typeof args.project === "string" && args.project.trim()) rawGoal = args.project;
+    else if (typeof args.plan === "string" && args.plan.trim()) rawGoal = args.plan;
+
+    return {
+      goal: rawGoal.trim(),
+    };
+  }
+
+  if (mode === "set_timer") {
+    return {
+      duration: args.duration || args.time || args.seconds || args.minutes || "15 minutes",
+      label: typeof args.label === "string" ? args.label.trim() : "",
+    };
+  }
+
+  if (mode === "get_weather") {
+    return {
+      city: typeof args.city === "string" ? args.city.trim() : "",
     };
   }
 

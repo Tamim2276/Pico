@@ -43,42 +43,46 @@ const sanitizeGemmaOutput = (s: string) => {
 };
 
 const buildToolAwarePrompt = (userText: string, telemetry: string) => [
-  "You are Pico, an offline AI assistant.",
+  "You are Pico, an intelligent offline personal assistant.",
   telemetry,
-  "When the user asks you to perform an action, call a tool by emitting ONLY a single JSON object.",
-  'Format: {"name": "tool_name", "args": {"param": "value"}}',
   "",
-  "Available tools:",
-  '- toggle_flashlight: { "state": "on" | "off" }',
-  '- battery_status: {}',
-  '- read_calendar: {}',
-  '- current_location: {}',
-  '- create_task: { "title": "task title", "priority": "High" | "Medium" | "Low", "category": "General" }',
-  '- read_tasks: {}',
-  "- create_event: { \"title\": \"event title\", \"startTime\": \"YYYY-MM-DDTHH:mm:ss\" }",
-  '- mark_task_completed: { "title": "task title" }',
-  '- daily_briefing: {}',
+  "Instructions:",
+  "- If the user is chatting, greeting, or asking general questions (e.g. 'Hi', 'Who are you', 'What is today'), reply naturally in plain text. NEVER output JSON for general conversation.",
+  "- ONLY emit JSON when the user specifically requests an action (create task, schedule event, set timer, turn on light, daily briefing).",
   "",
   "Examples:",
+  "User: Hi",
+  "Pico: Hello! How can I help you today? 👋",
+  "",
+  "User: Who are you?",
+  "Pico: I am Pico, your private on-device AI assistant.",
+  "",
+  "User: What is today's date?",
+  "Pico: Today is Sunday, August 30, 2026.",
+  "",
   "User: Turn on flashlight",
   '{"name": "toggle_flashlight", "args": {"state": "on"}}',
+  "",
+  "User: Set a timer for 20 minutes for baking",
+  '{"name": "set_timer", "args": {"duration": "20 minutes", "label": "Baking"}}',
+  "",
+  "User: What is the weather outside?",
+  '{"name": "get_weather", "args": {}}',
   "",
   "User: Add a task to buy groceries tomorrow with High priority",
   '{"name": "create_task", "args": {"title": "Buy groceries", "priority": "High", "category": "Grocery"}}',
   "",
+  "User: Help me plan my project presentation",
+  '{"name": "break_down_goal", "args": {"goal": "Project presentation"}}',
+  "",
   "User: Mark buy groceries as done",
   '{"name": "mark_task_completed", "args": {"title": "Buy groceries"}}',
   "",
-  "User: What does my day look like?",
+  "User: Give me a daily briefing",
   '{"name": "daily_briefing", "args": {}}',
-  "",
-  "User: Add an event Team Standup at 10:00 AM Today",
-  '{"name": "create_event", "args": {"title": "Team Standup", "startTime": "2026-08-30T10:00:00"}}',
   "",
   "User: What tasks do I have?",
   '{"name": "read_tasks", "args": {}}',
-  "",
-  "If the user is just chatting or greeting, reply with a short friendly response instead of JSON.",
   "",
   `User: ${userText}`,
   "Pico:"
@@ -136,18 +140,21 @@ export function AssistantScreen() {
       text,
     };
 
-    // 1. Layer 1 Fast-Path Router (0ms response for unambiguous commands)
+    // 1. Layer 1 Fast-Path Router (0ms response for unambiguous commands & greetings)
     const fastCall = matchIntent(text);
     if (fastCall) {
       setInputText("");
-      const result = await runTool(fastCall.name, fastCall.args);
+      const responseText = fastCall.directMessage
+        ? fastCall.directMessage
+        : (await runTool(fastCall.name, fastCall.args)).message;
+
       setMessages(prev => [
         ...prev,
         userMessage,
         {
           id: `${baseId}-pico`,
           role: "assistant",
-          text: result.message,
+          text: responseText,
         },
       ]);
       return;

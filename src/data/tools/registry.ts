@@ -9,6 +9,9 @@ import { readTasksTool } from "@data/tools/readTasksTool";
 import { createEventTool } from "@data/tools/createEventTool";
 import { completeTaskTool } from "@data/tools/completeTaskTool";
 import { dailyBriefingTool } from "@data/tools/dailyBriefingTool";
+import { breakDownGoalTool } from "@data/tools/breakDownGoalTool";
+import { setTimerTool } from "@data/tools/setTimerTool";
+import { weatherTool } from "@data/tools/weatherTool";
 
 /**
  * The one place every tool is registered.
@@ -26,6 +29,9 @@ export const toolRegistry: Tool[] = [
   createEventTool,
   completeTaskTool,
   dailyBriefingTool,
+  breakDownGoalTool,
+  setTimerTool,
+  weatherTool,
 ];
 
 /** look a tool up by the name the LLM emitted */

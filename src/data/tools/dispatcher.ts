@@ -4,6 +4,7 @@ import { getTool } from "@data/tools/registry";
 export interface ToolCall {
   name: string;
   args: Record<string, any>;
+  directMessage?: string;
 }
 
 /**
@@ -31,6 +32,37 @@ export async function runTool(
  */
 export function matchIntent(text: string): ToolCall | null {
   const t = text.toLowerCase().trim();
+
+  // 0. Conversational Greetings & Identity
+  if (/^(hi|hello|hey|hola|sup|good morning|good afternoon|good evening|who are you|how are you|what can you do)[\s!.]*$/i.test(t)) {
+    if (t.includes("morning") || t.includes("afternoon") || t.includes("evening")) {
+      return { name: "daily_briefing", args: {} };
+    }
+    if (t.includes("who are you") || t.includes("what can you do")) {
+      return {
+        name: "__chat__",
+        args: {},
+        directMessage: "I am Pico, your private on-device AI assistant! I can manage your tasks, schedule events, check the weather, set timers, control your device, and break down complex goals.",
+      };
+    }
+    return {
+      name: "__chat__",
+      args: {},
+      directMessage: "Hello! 👋 How can I help you today?",
+    };
+  }
+
+  // 0.1 Date and Time Inquiries
+  if (/^(what is today|what day is today|what date is today|today's date|current date|what time is it|what's the time|what is the time)[\s?.]*$/i.test(t)) {
+    const now = new Date();
+    const formatted = now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+    const timeFormatted = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    return {
+      name: "__chat__",
+      args: {},
+      directMessage: `Today is ${formatted} (${timeFormatted}). 📅`,
+    };
+  }
 
   // 1. Flashlight / Torch
   if (/\b(flash\s?light|torch|lamp)\b/.test(t) || /\b(light)\b/.test(t)) {
@@ -86,6 +118,34 @@ export function matchIntent(text: string): ToolCall | null {
     if (cleaned) {
       return { name: "mark_task_completed", args: { title: cleaned } };
     }
+  }
+
+  // 8. Break Down Goal / Planner Fast-Path
+  if (
+    /\b(plan my|break down|help me plan|help me prepare for|create a plan for|generate subtasks for)\b/.test(t)
+  ) {
+    const rawGoal = t
+      .replace(/\b(plan my|break down my|break down|help me plan|help me prepare for|create a plan for|generate subtasks for|goal to|my goal to|goal|project|please)\b/gi, "")
+      .trim();
+    if (rawGoal.length > 2) {
+      return { name: "break_down_goal", args: { goal: rawGoal } };
+    }
+  }
+
+  // 9. Timer Fast-Path
+  if (/\b(timer|alarm|countdown)\b/.test(t)) {
+    const durationMatch = t.match(/(\d+\s*(?:minutes?|mins?|seconds?|secs?|hours?|hrs?|m\b|s\b|h\b))/i);
+    const duration = durationMatch ? durationMatch[1] : "15 minutes";
+    const labelMatch = t.match(/for\s+(.+?)(?:\s+in|\s+for|\s+at|$)/i);
+    const label = labelMatch && !labelMatch[1].match(/^\d+/) ? labelMatch[1].trim() : "";
+    return { name: "set_timer", args: { duration, label } };
+  }
+
+  // 10. Weather Fast-Path
+  if (
+    /\b(weather|forecast|temperature|umbrella|rain|hot outside|cold outside)\b/.test(t)
+  ) {
+    return { name: "get_weather", args: {} };
   }
 
   return null;

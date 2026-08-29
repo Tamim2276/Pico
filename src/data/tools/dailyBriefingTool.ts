@@ -3,6 +3,7 @@ import * as Battery from "expo-battery";
 import { LocalTaskRepository } from "@data/local/LocalTaskRepository";
 import { LocalEventRepository } from "@data/local/LocalEventRepository";
 import { LocalAuthRepository } from "@data/auth/LocalAuthRepository";
+import { weatherTool } from "@data/tools/weatherTool";
 
 const taskRepo = new LocalTaskRepository();
 const eventRepo = new LocalEventRepository();
@@ -10,7 +11,7 @@ const authRepo = new LocalAuthRepository();
 
 export const dailyBriefingTool: Tool = {
   name: "daily_briefing",
-  description: "Provide a comprehensive morning or daily briefing summarizing tasks, events, and battery status.",
+  description: "Provide a comprehensive morning or daily briefing summarizing tasks, events, battery, and weather status.",
   parameters: {
     type: "object",
     properties: {},
@@ -32,12 +33,24 @@ export const dailyBriefingTool: Tool = {
         // ignore battery read failure
       }
 
-      // 2. Tasks
+      // 2. Weather
+      let weatherLine = "";
+      try {
+        const weatherRes = await weatherTool.execute({});
+        if (weatherRes.ok && weatherRes.data) {
+          const { temp, condition, location } = weatherRes.data as any;
+          weatherLine = `🌤️ Weather: ${condition} • ${temp}°C in ${location}`;
+        }
+      } catch {
+        // ignore weather error
+      }
+
+      // 3. Tasks
       const tasks = await taskRepo.getTasks();
       const pending = tasks.filter(t => !t.completed);
       const highPriority = pending.filter(t => t.priority === "High");
 
-      // 3. Today's Events
+      // 4. Today's Events
       const events = await eventRepo.getEvents();
       const today = new Date();
       const todayEvents = events.filter(e => {
@@ -49,12 +62,16 @@ export const dailyBriefingTool: Tool = {
         );
       });
 
-      // 4. Compose Briefing
+      // 5. Compose Briefing
       const lines: string[] = [
         `☀️ Daily Briefing for ${name}`,
         `━━━━━━━━━━━━━━━━━━`,
         `🔋 Battery: ${batteryText}`,
       ];
+
+      if (weatherLine) {
+        lines.push(weatherLine);
+      }
 
       if (todayEvents.length > 0) {
         lines.push(`📅 Events Today (${todayEvents.length}):`);
