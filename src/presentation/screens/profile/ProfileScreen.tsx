@@ -8,13 +8,32 @@ import {
   StatusBar,
   ScrollView,
   Platform,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "@presentation/context/ThemeContext";
 
 export default function ProfileScreen() {
   const { colors, isDarkMode, toggleDarkMode } = useTheme();
   const styles = createStyles(colors);
+  const navigation = useNavigation<any>();
+
+  const openNotifications = () => navigation.navigate("Notifications");
+
+  const handleSignOut = () => {
+    Alert.alert("Sign out", "Are you sure you want to sign out?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Sign Out",
+        style: "destructive",
+        onPress: () => {
+          const root = navigation.getParent() ?? navigation;
+          root.reset({ index: 0, routes: [{ name: "Splash" }] });
+        },
+      },
+    ]);
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -31,7 +50,11 @@ export default function ProfileScreen() {
           </View>
           <Text style={styles.brandTitle}>Pico</Text>
         </View>
-        <TouchableOpacity activeOpacity={0.7} style={styles.bellButton}>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          style={styles.bellButton}
+          onPress={openNotifications}
+        >
           <Text style={styles.bellIcon}>🔔</Text>
         </TouchableOpacity>
       </View>
@@ -72,7 +95,11 @@ export default function ProfileScreen() {
             />
           </View>
           <View style={styles.divider} />
-          <TouchableOpacity activeOpacity={0.7} style={styles.row}>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={styles.row}
+            onPress={openNotifications}
+          >
             <View style={styles.rowIconWrap}>
               <Text style={styles.rowIcon}>🔔</Text>
             </View>
@@ -123,7 +150,11 @@ export default function ProfileScreen() {
         </View>
 
         {/* Sign out */}
-        <TouchableOpacity activeOpacity={0.7} style={styles.signOutButton}>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          style={styles.signOutButton}
+          onPress={handleSignOut}
+        >
           <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
       </ScrollView>
