@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Modal,
   View,
@@ -19,8 +19,6 @@ interface Props {
   visible: boolean;
   onClose: () => void;
   onCreated: () => void;
-  initialTitle?: string;
-  initialNotes?: string;
 }
 
 const DURATIONS = [30, 60, 90, 120];
@@ -49,24 +47,10 @@ function dayChips(): { label: string; date: Date }[] {
   return out;
 }
 
-export default function AddTaskModal({
-  visible,
-  onClose,
-  onCreated,
-  initialTitle,
-  initialNotes,
-}: Props) {
+export default function AddTaskModal({ visible, onClose, onCreated }: Props) {
   const { colors } = useTheme();
   const styles = createStyles(colors);
   const chips = useMemo(dayChips, [visible]);
-
-  useEffect(() => {
-    if (visible) {
-      setTitle(initialTitle ?? "");
-      setNotes(initialNotes ?? "");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, initialTitle, initialNotes]);
 
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");

@@ -7,12 +7,10 @@ import {
   StyleSheet,
   StatusBar,
   ScrollView,
-  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { TASKS } from "@shared/constants/data";
 import { useTheme } from "@presentation/context/ThemeContext";
-import AddTaskModal from "@presentation/components/AddTaskModal";
 import type { Task, Priority } from "@shared/types";
 
 type FilterKey = "All" | "Pending" | "Completed";
@@ -41,7 +39,6 @@ export default function TasksScreen({ navigation }: Props) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<FilterKey>("All");
   const [tasks, setTasks] = useState<Task[]>(TASKS);
-  const [addOpen, setAddOpen] = useState(false);
 
   const toggleTask = (id: string) => {
     setTasks((prev) =>
@@ -64,6 +61,9 @@ export default function TasksScreen({ navigation }: Props) {
     });
   }, [tasks, query, filter]);
 
+  const highPriorityPendingCount = tasks.filter(
+    (t) => !t.completed && t.priority === "High"
+  ).length;
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -75,11 +75,7 @@ export default function TasksScreen({ navigation }: Props) {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Tasks</Text>
-        <TouchableOpacity
-          activeOpacity={0.7}
-          style={styles.addButton}
-          onPress={() => setAddOpen(true)}
-        >
+        <TouchableOpacity activeOpacity={0.7} style={styles.addButton}>
           <Text style={styles.addButtonText}>+</Text>
         </TouchableOpacity>
       </View>
@@ -184,17 +180,22 @@ export default function TasksScreen({ navigation }: Props) {
           );
         })}
 
-
+        {/* AI assistant card */}
+        <View style={styles.aiCard}>
+          <Text style={styles.aiClipboardDecoration}>📋</Text>
+          <View style={styles.aiHeaderRow}>
+            <Text style={styles.aiSparkle}>✨</Text>
+            <Text style={styles.aiLabel}>Pico AI Assistant</Text>
+          </View>
+          <Text style={styles.aiText}>
+            You have {highPriorityPendingCount} high-priority tasks due this
+            week. I recommend starting with the Q4 Report review today.
+          </Text>
+          <TouchableOpacity activeOpacity={0.7} style={styles.aiButton}>
+            <Text style={styles.aiButtonText}>Plan My Day</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
-
-      <AddTaskModal
-        visible={addOpen}
-        onClose={() => setAddOpen(false)}
-        onCreated={() => {
-          setAddOpen(false);
-          Alert.alert("Task added", "It is now in your phone calendar.");
-        }}
-      />
     </SafeAreaView>
   );
 }

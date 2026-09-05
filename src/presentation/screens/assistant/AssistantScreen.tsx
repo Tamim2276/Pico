@@ -19,7 +19,6 @@ import ModelPickerSheet from "@presentation/components/ModelPickerSheet";
 import Welcome from "@presentation/components/Welcome";
 import MessageBubble from "../../components/MessageBubble";
 import TypingIndicator from "@presentation/components/TypingIndicator";
-import AddTaskModal from "@presentation/components/AddTaskModal";
 import { rescheduleBus } from "@data/notifications/rescheduleBus";
 
 
@@ -54,40 +53,11 @@ const buildToolAwarePrompt = (userText: string) => [
   `User: ${userText}`,
 ].join("\n");
 
-
-// Detect an "add task" request and pull a rough title out of it. Deterministic
-// (no LLM), so it can't hallucinate — the user confirms/edits in the modal.
-const looksLikeAddTask = (text: string): boolean => {
-  const t = text.toLowerCase();
-  return (
-    /\b(add|create|new|schedule|set up|make)\b[\s\S]*\b(task|event|reminder|appointment|meeting)\b/.test(t) ||
-    /\bremind me to\b/.test(t) ||
-    /\b(add|put|schedule)\b[\s\S]*\bcalendar\b/.test(t)
-  );
-};
-
-const extractTaskTitle = (text: string): string => {
-  let t = text.trim();
-  t = t.replace(/^(hey )?pico[,\s]*/i, "");
-  t = t.replace(/^(can you|could you|please)\s+/i, "");
-  t = t.replace(/^(add|create|new|schedule|set up|make|remind me to)\s+/i, "");
-  t = t.replace(/^(a|an|the)\s+/i, "");
-  t = t.replace(/\s+(to|on|in)\s+(my\s+)?calendar\b/i, "");
-  t = t.replace(/\s+\b(today|tonight|tomorrow)\b[\s\S]*$/i, "");
-  t = t.replace(/\s+\bthis (morning|afternoon|evening)\b[\s\S]*$/i, "");
-  t = t.replace(/\s+\bnext\s+\w+[\s\S]*$/i, "");
-  t = t.replace(/\s+\bon\s+\w+day\b[\s\S]*$/i, "");
-  t = t.replace(/\s+\bat\s+\d{1,2}(:\d{2})?\s*(am|pm)?\b[\s\S]*$/i, "");
-  return t.trim() || "New task";
-};
-
 export function AssistantScreen() {
   const [inputText, setInputText] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [gemmaLoading, setGemmaLoading] = useState(false);
   const [modelPickerOpen, setModelPickerOpen] = useState(false);
-  const [addTaskOpen, setAddTaskOpen] = useState(false);
-  const [taskTitle, setTaskTitle] = useState("");
 
   const flatListRef = useRef<FlatList>(null);
 
@@ -149,22 +119,6 @@ export function AssistantScreen() {
     setGemmaLoading(true);
 
     try {
-      // Add-task intent: handle deterministically, open the calendar form.
-      if (looksLikeAddTask(text)) {
-        const title = extractTaskTitle(text);
-        setTaskTitle(title);
-        setAddTaskOpen(true);
-        const picoMessage: Message = {
-          id: Date.now().toString(),
-          role: "assistant",
-          text: `Sure — I've started "${title}". Pick a time and tap Add to save it to your calendar.`,
-        };
-        setMessages(previous =>
-          previous.filter(message => message.role !== "typing").concat(picoMessage)
-        );
-        return;
-      }
-
       const provider = createLLMProvider();
       const result = await provider.generate(buildToolAwarePrompt(text));
       const raw = typeof result === "string" ? result : JSON.stringify(result);
@@ -257,16 +211,6 @@ export function AssistantScreen() {
       <ModelPickerSheet
         visible={modelPickerOpen}
         onClose={() => setModelPickerOpen(false)}
-      />
-
-      <AddTaskModal
-        visible={addTaskOpen}
-        initialTitle={taskTitle}
-        onClose={() => setAddTaskOpen(false)}
-        onCreated={() => {
-          setAddTaskOpen(false);
-          pushAssistantMessage("Added it to your calendar. \u2705");
-        }}
       />
     </KeyboardAvoidingView>
   );

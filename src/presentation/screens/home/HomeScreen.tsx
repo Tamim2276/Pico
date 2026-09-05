@@ -8,7 +8,6 @@ import {
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "@presentation/context/ThemeContext";
 
 // Stat cards shown in the 2x2 grid at the top of the dashboard
@@ -70,7 +69,6 @@ const ACTIVITY = [
 export default function HomeScreen() {
   const { colors, isDarkMode } = useTheme();
   const styles = createStyles(colors);
-  const navigation = useNavigation<any>();
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -87,11 +85,7 @@ export default function HomeScreen() {
           </View>
           <Text style={styles.brandTitle}>Pico</Text>
         </View>
-        <TouchableOpacity
-          activeOpacity={0.7}
-          style={styles.bellButton}
-          onPress={() => navigation.navigate("Notifications")}
-        >
+        <TouchableOpacity activeOpacity={0.7} style={styles.bellButton}>
           <Text style={styles.bellIcon}>🔔</Text>
           <View style={styles.bellBadge}>
             <Text style={styles.bellBadgeText}>3</Text>
@@ -151,7 +145,28 @@ export default function HomeScreen() {
           </TouchableOpacity>
         ))}
 
-
+        {/* AI Insight card */}
+        <View style={styles.aiCard}>
+          <View style={styles.aiHeaderRow}>
+            <Text style={styles.aiSparkle}>✨</Text>
+            <Text style={styles.aiLabel}>AI Insight</Text>
+          </View>
+          <Text style={styles.aiText}>
+            You have a gap between 2 PM and 4 PM. Should I schedule your Q4
+            prep then?
+          </Text>
+          <View style={styles.aiActionsRow}>
+            <TouchableOpacity activeOpacity={0.7} style={styles.aiPrimaryButton}>
+              <Text style={styles.aiPrimaryButtonText}>Yes, schedule it</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={styles.aiSecondaryButton}
+            >
+              <Text style={styles.aiSecondaryButtonText}>Dismiss</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
