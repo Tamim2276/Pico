@@ -22,7 +22,6 @@
         "backgroundColor": "#ffffff"
       },
       "minSdkVersion": 26,
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.tamim2276.pico",
       "permissions": [
@@ -39,7 +38,6 @@
     "plugins": [
       "expo-secure-store",
       "expo-notifications",
-      "expo-status-bar",
       "react-native-litert-lm",
       [
         "expo-camera",
@@ -70,6 +68,13 @@
       ],
       "expo-asset",
       "expo-font"
-    ]
+    ],
+    "owner": "tamim2276",
+    "extra": {
+      "eas": {
+        "projectId": "bc672930-8551-499e-83e0-54b5c0c89df0"
+      },
+      "llmProvider": "local"
+    }
   }
 }

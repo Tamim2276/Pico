@@ -12,6 +12,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { COLORS } from "@shared/constants/data";
+import { useAuth } from "@presentation/context/AuthContext";
+import { Alert } from "react-native";
 
 interface Props {
   navigation: any;
@@ -23,9 +25,15 @@ export default function LoginScreen({ navigation }: Props) {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
+  const { login } = useAuth();
+
   // Handle form submission
-  const handleSubmit = () => {
-    navigation.replace("MainTabs");
+  const handleSubmit = async () => {
+    try {
+      await login(email, password);
+    } catch (error: any) {
+      Alert.alert("Login Failed", error.message);
+    }
   };
 
   return (

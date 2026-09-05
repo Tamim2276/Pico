@@ -7,7 +7,7 @@ export type LLMProviderName = 'existing' | 'local';
 export interface LLMProvider {
   name: LLMProviderName;
 
-  generate(prompt: string): Promise<string>;
+  generate(prompt: string, grammar?: string): Promise<string>;
 
   generateStructured<T = Record<string, unknown>>(
     prompt: string,
@@ -219,13 +219,14 @@ async function ensureLocalContext(): Promise<LlamaContext> {
 
 export const testGemma = async (
   prompt: string = defaultPrompt,
+  grammar?: string,
 ): Promise<string> => {
   try {
     const context = await ensureLocalContext();
 
     console.log('[LLM] testGemma sending to Gemma:', JSON.stringify([{ role: 'user', content: prompt }], null, 2));
 
-    const result = await context.completion({
+    const completionParams: any = {
       messages: [
         {
           role: 'user',
@@ -233,9 +234,15 @@ export const testGemma = async (
         },
       ],
       n_predict: 160,
-      temperature: 0.7,
+      temperature: 0.3,
       stop: STOP_WORDS,
-    });
+    };
+
+    if (grammar) {
+      completionParams.grammar = grammar;
+    }
+
+    const result = await context.completion(completionParams);
 
     console.log('Gemma result text:', result.text);
 
@@ -249,8 +256,8 @@ export const testGemma = async (
 class ExistingProvider implements LLMProvider {
   name: LLMProviderName = 'existing';
 
-  async generate(prompt: string): Promise<string> {
-    return testGemma(prompt);
+  async generate(prompt: string, grammar?: string): Promise<string> {
+    return testGemma(prompt, grammar);
   }
 
   async generateStructured<T = Record<string, unknown>>(
@@ -277,12 +284,12 @@ class ExistingProvider implements LLMProvider {
 class LocalProvider implements LLMProvider {
   name: LLMProviderName = 'local';
 
-  async generate(prompt: string): Promise<string> {
+  async generate(prompt: string, grammar?: string): Promise<string> {
     const context = await ensureLocalContext();
 
     console.log('sending to Gemma:', JSON.stringify([{ role: 'user', content: prompt }], null, 2));
 
-    const result = await context.completion({
+    const completionParams: any = {
       messages: [
         {
           role: 'user',
@@ -290,9 +297,15 @@ class LocalProvider implements LLMProvider {
         },
       ],
       n_predict: 160,
-      temperature: 0.7,
+      temperature: 0.3,
       stop: STOP_WORDS,
-    });
+    };
+
+    if (grammar) {
+      completionParams.grammar = grammar;
+    }
+
+    const result = await context.completion(completionParams);
 
     console.log('Gemma result text:', result.text);
 

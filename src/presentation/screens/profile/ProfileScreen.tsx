@@ -11,10 +11,22 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@presentation/context/ThemeContext";
+import { useAuth } from "@presentation/context/AuthContext";
 
 export default function ProfileScreen() {
   const { colors, isDarkMode, toggleDarkMode } = useTheme();
+  const { user, logout } = useAuth();
   const styles = createStyles(colors);
+
+  const initials = user?.fullName
+    ? user.fullName
+        .split(" ")
+        .map((n) => n[0])
+        .filter(Boolean)
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : "U";
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -44,14 +56,14 @@ export default function ProfileScreen() {
         <View style={styles.identityWrap}>
           <View style={styles.avatarWrap}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>AJ</Text>
+              <Text style={styles.avatarText}>{initials}</Text>
             </View>
             <TouchableOpacity activeOpacity={0.7} style={styles.editBadge}>
               <Text style={styles.editBadgeText}>✎</Text>
             </TouchableOpacity>
           </View>
-          <Text style={styles.name}>Alex Johnson</Text>
-          <Text style={styles.email}>alex.johnson@pico-ai.com</Text>
+          <Text style={styles.name}>{user?.fullName || "User"}</Text>
+          <Text style={styles.email}>{user?.email || ""}</Text>
         </View>
 
         {/* System Preferences */}
@@ -123,7 +135,11 @@ export default function ProfileScreen() {
         </View>
 
         {/* Sign out */}
-        <TouchableOpacity activeOpacity={0.7} style={styles.signOutButton}>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          style={styles.signOutButton}
+          onPress={logout}
+        >
           <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
       </ScrollView>

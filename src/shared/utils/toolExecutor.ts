@@ -5,12 +5,20 @@ export type ParsedToolCall = {
   args: Record<string, any>;
 };
 
-const TOOL_ARG_MODE: Record<string, "none" | "flashlight"> = {
+const TOOL_ARG_MODE: Record<string, "none" | "flashlight" | "create_task" | "create_event" | "mark_task_completed" | "break_down_goal" | "set_timer" | "get_weather"> = {
   toggle_flashlight: "flashlight",
   battery_status: "none",
   read_calendar: "none",
   current_location: "none",
   fire_notification: "none",
+  create_task: "create_task",
+  read_tasks: "none",
+  create_event: "create_event",
+  mark_task_completed: "mark_task_completed",
+  daily_briefing: "none",
+  break_down_goal: "break_down_goal",
+  set_timer: "set_timer",
+  get_weather: "get_weather",
 };
 
 const extractFirstBalancedJsonObject = (text: string): string | null => {
@@ -73,6 +81,80 @@ const normalizeArgsForTool = (
     return {};
   }
 
+  if (mode === "create_task") {
+    let rawTitle = "";
+    if (typeof args.title === "string" && args.title.trim()) rawTitle = args.title;
+    else if (typeof args.task === "string" && args.task.trim()) rawTitle = args.task;
+    else if (typeof args.name === "string" && args.name.trim()) rawTitle = args.name;
+    else if (typeof args.description === "string" && args.description.trim()) rawTitle = args.description;
+    else if (typeof args.content === "string" && args.content.trim()) rawTitle = args.content;
+    else if (typeof args.todo === "string" && args.todo.trim()) rawTitle = args.todo;
+
+    let priority: "High" | "Medium" | "Low" = "Medium";
+    const rawPriority = String(args.priority || "").toLowerCase();
+    if (rawPriority.includes("high")) priority = "High";
+    else if (rawPriority.includes("low")) priority = "Low";
+
+    return {
+      title: rawTitle.trim(),
+      priority,
+      category: typeof args.category === "string" ? args.category : "General",
+      dueDate: typeof args.dueDate === "string" ? args.dueDate : undefined,
+    };
+  }
+
+  if (mode === "create_event") {
+    let rawTitle = "";
+    if (typeof args.title === "string" && args.title.trim()) rawTitle = args.title;
+    else if (typeof args.name === "string" && args.name.trim()) rawTitle = args.name;
+    else if (typeof args.event === "string" && args.event.trim()) rawTitle = args.event;
+    else if (typeof args.description === "string" && args.description.trim()) rawTitle = args.description;
+
+    return {
+      title: rawTitle.trim(),
+      startTime: args.startTime,
+      endTime: args.endTime,
+      location: args.location,
+    };
+  }
+
+  if (mode === "mark_task_completed") {
+    let rawTitle = "";
+    if (typeof args.title === "string" && args.title.trim()) rawTitle = args.title;
+    else if (typeof args.task === "string" && args.task.trim()) rawTitle = args.task;
+    else if (typeof args.name === "string" && args.name.trim()) rawTitle = args.name;
+    else if (typeof args.description === "string" && args.description.trim()) rawTitle = args.description;
+
+    return {
+      title: rawTitle.trim(),
+    };
+  }
+
+  if (mode === "break_down_goal") {
+    let rawGoal = "";
+    if (typeof args.goal === "string" && args.goal.trim()) rawGoal = args.goal;
+    else if (typeof args.title === "string" && args.title.trim()) rawGoal = args.title;
+    else if (typeof args.project === "string" && args.project.trim()) rawGoal = args.project;
+    else if (typeof args.plan === "string" && args.plan.trim()) rawGoal = args.plan;
+
+    return {
+      goal: rawGoal.trim(),
+    };
+  }
+
+  if (mode === "set_timer") {
+    return {
+      duration: args.duration || args.time || args.seconds || args.minutes || "15 minutes",
+      label: typeof args.label === "string" ? args.label.trim() : "",
+    };
+  }
+
+  if (mode === "get_weather") {
+    return {
+      city: typeof args.city === "string" ? args.city.trim() : "",
+    };
+  }
+
   return {};
 };
 
@@ -124,14 +206,43 @@ export const parseToolCallFromGemma = (raw: string): ParsedToolCall | null => {
   let parsed = extractJsonObject(cleaned);
   
   if (!parsed) {
-    try {
-      parsed = JSON.parse(cleaned);
-    } catch {
-      return null;
+    // Robust regex fallback for small models that emit malformed JSON
+    if (cleaned.includes('"create_task"')) {
+      const titleMatch = cleaned.match(/"(?:title|description)"\s*:\s*"([^"]+)"/i);
+      const priorityMatch = cleaned.match(/"priority"\s*:\s*(?:\[\s*)?"(High|Medium|Low)"/i);
+      const categoryMatch = cleaned.match(/"category"\s*:\s*"([^"]+)"/i);
+      if (titleMatch) {
+        return {
+          name: "create_task",
+          args: {
+            title: titleMatch[1],
+            priority: (priorityMatch?.[1] as any) || "Medium",
+            category: categoryMatch?.[1] || "General",
+          },
+        };
+      }
     }
+    if (cleaned.includes('"toggle_flashlight"')) {
+      const stateMatch = cleaned.match(/"state"\s*:\s*"(on|off)"/i);
+      return {
+        name: "toggle_flashlight",
+        args: { state: stateMatch ? stateMatch[1] : "on" },
+      };
+    }
+    if (cleaned.includes('"read_tasks"')) {
+      return { name: "read_tasks", args: {} };
+    }
+    if (cleaned.includes('"battery_status"')) {
+      return { name: "battery_status", args: {} };
+    }
+    if (cleaned.includes('"read_calendar"')) {
+      return { name: "read_calendar", args: {} };
+    }
+    if (cleaned.includes('"current_location"')) {
+      return { name: "current_location", args: {} };
+    }
+    return null;
   }
-
-  if (!parsed) return null;
 
   const name = typeof parsed.name === "string" ? parsed.name : "";
   if (!name) return null;

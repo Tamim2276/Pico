@@ -45,5 +45,91 @@
       "type": "object",
       "properties": {}
     }
+  },
+  {
+    "name": "create_task",
+    "description": "Add a new task or todo item to the user's task list.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "The title or description of the task." },
+        "priority": { "type": "string", "enum": ["High", "Medium", "Low"], "description": "Task priority." },
+        "category": { "type": "string", "description": "Category name like Work, Personal, etc." }
+      },
+      "required": ["title"]
+    }
+  },
+  {
+    "name": "read_tasks",
+    "description": "List all pending tasks in the user's task list.",
+    "parameters": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "create_event",
+    "description": "Schedule a new calendar event.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Event title or meeting subject." },
+        "startTime": { "type": "string", "description": "Start time in ISO format or time string." },
+        "location": { "type": "string", "description": "Optional location." }
+      },
+      "required": ["title"]
+    }
+  },
+  {
+    "name": "mark_task_completed",
+    "description": "Mark a task as completed or done by its title.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "The title or keyword of the task." }
+      },
+      "required": ["title"]
+    }
+  },
+  {
+    "name": "daily_briefing",
+    "description": "Provide a comprehensive morning or daily briefing of tasks, events, and battery.",
+    "parameters": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "break_down_goal",
+    "description": "Autonomously decompose a complex goal into 3-4 subtasks and add them to tasks list.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "goal": { "type": "string", "description": "The goal, project, or exam to plan for." }
+      },
+      "required": ["goal"]
+    }
+  },
+  {
+    "name": "set_timer",
+    "description": "Set a countdown timer or reminder alert.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "duration": { "type": "string", "description": "Duration like '15 minutes', '30 seconds', '1 hour'." },
+        "label": { "type": "string", "description": "Optional label for the timer." }
+      },
+      "required": ["duration"]
+    }
+  },
+  {
+    "name": "get_weather",
+    "description": "Get real-time weather and forecast for current location.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "city": { "type": "string", "description": "Optional city name." }
+      }
+    }
   }
 ]

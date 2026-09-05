@@ -4,7 +4,10 @@ import * as Notifications from "expo-notifications";
 
 import RootNavigator from "@presentation/navigation/RootNavigator";
 import { ThemeProvider } from "@presentation/context/ThemeContext";
+import { AuthProvider } from "@presentation/context/AuthContext";
 import { TorchProvider } from "@presentation/context/TorchProvider";
+import { TaskProvider } from "@presentation/context/TaskContext";
+import { EventProvider } from "@presentation/context/EventContext";
 import {
   registerRescheduleCategory,
   RESCHEDULE_ACTIONS,
@@ -50,9 +53,15 @@ export default function App() {
 
   return (
     <ThemeProvider>
-      <TorchProvider>
-        <RootNavigator />
-      </TorchProvider>
+      <AuthProvider>
+        <TorchProvider>
+          <TaskProvider>
+            <EventProvider>
+              <RootNavigator />
+            </EventProvider>
+          </TaskProvider>
+        </TorchProvider>
+      </AuthProvider>
     </ThemeProvider>
   );
 }

@@ -20,6 +20,8 @@ import Welcome from "@presentation/components/Welcome";
 import MessageBubble from "../../components/MessageBubble";
 import TypingIndicator from "@presentation/components/TypingIndicator";
 import { rescheduleBus } from "@data/notifications/rescheduleBus";
+import { useTasks } from "@presentation/context/TaskContext";
+import { matchIntent, runTool } from "@data/tools/dispatcher";
 
 
 type Message = {
@@ -40,17 +42,50 @@ const sanitizeGemmaOutput = (s: string) => {
   return s.replace(/<[^>]+>/g, '').trim();
 };
 
-const buildToolAwarePrompt = (userText: string) => [
-  "You are Pico.",
-  // "Reply normally unless a tool is clearly needed.",
-  // "Use a tool ONLY when the user asks you to perform an available tool action.",
-  // "Do NOT use a tool for greetings, casual chat, explanations, or questions you can answer yourself.",
-  'Tool call format: <start_function_call>{"name":"TOOL","args":{}}<escape>',
-  // "Output only the tool call when using a tool.",
-  // "Available tools:",
-   JSON.stringify(toolList),
+const buildToolAwarePrompt = (userText: string, telemetry: string) => [
+  "You are Pico, an intelligent offline personal assistant.",
+  telemetry,
+  "",
+  "Instructions:",
+  "- If the user is chatting, greeting, or asking general questions (e.g. 'Hi', 'Who are you', 'What is today'), reply naturally in plain text. NEVER output JSON for general conversation.",
+  "- ONLY emit JSON when the user specifically requests an action (create task, schedule event, set timer, turn on light, daily briefing).",
+  "",
+  "Examples:",
+  "User: Hi",
+  "Pico: Hello! How can I help you today? 👋",
+  "",
+  "User: Who are you?",
+  "Pico: I am Pico, your private on-device AI assistant.",
+  "",
+  "User: What is today's date?",
+  "Pico: Today is Sunday, August 30, 2026.",
+  "",
+  "User: Turn on flashlight",
+  '{"name": "toggle_flashlight", "args": {"state": "on"}}',
+  "",
+  "User: Set a timer for 20 minutes for baking",
+  '{"name": "set_timer", "args": {"duration": "20 minutes", "label": "Baking"}}',
+  "",
+  "User: What is the weather outside?",
+  '{"name": "get_weather", "args": {}}',
+  "",
+  "User: Add a task to buy groceries tomorrow with High priority",
+  '{"name": "create_task", "args": {"title": "Buy groceries", "priority": "High", "category": "Grocery"}}',
+  "",
+  "User: Help me plan my project presentation",
+  '{"name": "break_down_goal", "args": {"goal": "Project presentation"}}',
+  "",
+  "User: Mark buy groceries as done",
+  '{"name": "mark_task_completed", "args": {"title": "Buy groceries"}}',
+  "",
+  "User: Give me a daily briefing",
+  '{"name": "daily_briefing", "args": {}}',
+  "",
+  "User: What tasks do I have?",
+  '{"name": "read_tasks", "args": {}}',
   "",
   `User: ${userText}`,
+  "Pico:"
 ].join("\n");
 
 export function AssistantScreen() {
@@ -58,9 +93,9 @@ export function AssistantScreen() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [gemmaLoading, setGemmaLoading] = useState(false);
   const [modelPickerOpen, setModelPickerOpen] = useState(false);
+  const { tasks } = useTasks();
 
   const flatListRef = useRef<FlatList>(null);
-
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -105,6 +140,26 @@ export function AssistantScreen() {
       text,
     };
 
+    // 1. Layer 1 Fast-Path Router (0ms response for unambiguous commands & greetings)
+    const fastCall = matchIntent(text);
+    if (fastCall) {
+      setInputText("");
+      const responseText = fastCall.directMessage
+        ? fastCall.directMessage
+        : (await runTool(fastCall.name, fastCall.args)).message;
+
+      setMessages(prev => [
+        ...prev,
+        userMessage,
+        {
+          id: `${baseId}-pico`,
+          role: "assistant",
+          text: responseText,
+        },
+      ]);
+      return;
+    }
+
     setMessages(previous => [
       ...previous,
       userMessage,
@@ -119,8 +174,14 @@ export function AssistantScreen() {
     setGemmaLoading(true);
 
     try {
+      const now = new Date();
+      const dateIso = now.toISOString().split('T')[0]; // "2026-08-30"
+      const timeStr = now.toLocaleDateString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" });
+      const pendingCount = tasks.filter(t => !t.completed).length;
+      const telemetry = `[Today's Date: ${dateIso} (${timeStr}) | Pending Tasks: ${pendingCount}]`;
+
       const provider = createLLMProvider();
-      const result = await provider.generate(buildToolAwarePrompt(text));
+      const result = await provider.generate(buildToolAwarePrompt(text, telemetry));
       const raw = typeof result === "string" ? result : JSON.stringify(result);
 
       const toolCall = parseToolCallFromGemma(raw);

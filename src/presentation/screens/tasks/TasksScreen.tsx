@@ -9,9 +9,9 @@ import {
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { TASKS } from "@shared/constants/data";
 import { useTheme } from "@presentation/context/ThemeContext";
-import type { Task, Priority } from "@shared/types";
+import { useTasks } from "@presentation/context/TaskContext";
+import type { Task, Priority } from "../../domain/entities/Task";
 
 type FilterKey = "All" | "Pending" | "Completed";
 
@@ -38,12 +38,11 @@ export default function TasksScreen({ navigation }: Props) {
 
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<FilterKey>("All");
-  const [tasks, setTasks] = useState<Task[]>(TASKS);
+  const { tasks, toggleTaskCompletion } = useTasks();
 
   const toggleTask = (id: string) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t))
-    );
+    const task = tasks.find(t => t.id === id);
+    if (task) toggleTaskCompletion(task);
   };
 
   const filteredTasks = useMemo(() => {
@@ -123,9 +122,17 @@ export default function TasksScreen({ navigation }: Props) {
         {/* Task list */}
         {filteredTasks.map((task) => {
           const priorityStyle = PRIORITY_STYLES[task.priority];
-          const metaIcon = task.completed
-            ? null
-            : CATEGORY_ICON[task.category] ?? "📅";
+          const categoryTag = task.category || "General";
+          const categoryIcon = CATEGORY_ICON[task.category] || "🏷️";
+
+          const formattedDueDate = task.dueDate
+            ? (() => {
+                const d = new Date(task.dueDate);
+                return !isNaN(d.getTime())
+                  ? `Due ${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+                  : `Due ${task.dueDate}`;
+              })()
+            : null;
 
           return (
             <View key={task.id} style={styles.taskCard}>
@@ -171,7 +178,7 @@ export default function TasksScreen({ navigation }: Props) {
                     <Text style={styles.completedLabel}>Completed</Text>
                   ) : (
                     <Text style={styles.taskMetaText}>
-                      {metaIcon} {task.dueDate}
+                      {formattedDueDate ? `⏰ ${formattedDueDate}` : `${categoryIcon} ${categoryTag}`}
                     </Text>
                   )}
                 </View>
@@ -188,8 +195,9 @@ export default function TasksScreen({ navigation }: Props) {
             <Text style={styles.aiLabel}>Pico AI Assistant</Text>
           </View>
           <Text style={styles.aiText}>
-            You have {highPriorityPendingCount} high-priority tasks due this
-            week. I recommend starting with the Q4 Report review today.
+            {highPriorityPendingCount > 0
+              ? `You have ${highPriorityPendingCount} high-priority task(s) active. I recommend focusing on your top priority first.`
+              : `You have ${tasks.filter(t => !t.completed).length} pending task(s). Great job keeping everything organized!`}
           </Text>
           <TouchableOpacity activeOpacity={0.7} style={styles.aiButton}>
             <Text style={styles.aiButtonText}>Plan My Day</Text>

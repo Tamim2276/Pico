@@ -19,7 +19,7 @@ interface ToolMenuProps {
   onToolResult: (text: string) => void;
 }
 
-type ActionKey = "flashlight" | "battery" | "calendar" | "location" | "notify";
+type ActionKey = "flashlight" | "battery" | "calendar" | "location" | "notify" | "create_task" | "read_tasks" | "daily_briefing" | "plan_goal" | "weather" | "timer";
 
 interface MenuAction {
   key: ActionKey;
@@ -31,6 +31,42 @@ interface MenuAction {
 const ICON_COLOR = "#E3E3E3";
 
 const ACTIONS: MenuAction[] = [
+  {
+    key: "weather",
+    label: "Live Weather",
+    icon: <Ionicons name="cloudy-night-outline" size={22} color={ICON_COLOR} />,
+    run: () => runTool("get_weather"),
+  },
+  {
+    key: "timer",
+    label: "15m Timer",
+    icon: <Ionicons name="timer-outline" size={22} color={ICON_COLOR} />,
+    run: () => runTool("set_timer", { duration: "15 minutes", label: "Focus Session" }),
+  },
+  {
+    key: "daily_briefing",
+    label: "Daily Briefing",
+    icon: <Ionicons name="sunny-outline" size={22} color={ICON_COLOR} />,
+    run: () => runTool("daily_briefing"),
+  },
+  {
+    key: "plan_goal",
+    label: "Plan a Project",
+    icon: <Ionicons name="bulb-outline" size={22} color={ICON_COLOR} />,
+    run: () => runTool("break_down_goal", { goal: "Software Engineering Final Submission" }),
+  },
+  {
+    key: "create_task",
+    label: "Add Quick Task",
+    icon: <Ionicons name="checkbox-outline" size={22} color={ICON_COLOR} />,
+    run: () => runTool("create_task", { title: "Test task from Pico Assistant", priority: "High" }),
+  },
+  {
+    key: "read_tasks",
+    label: "My Tasks",
+    icon: <Ionicons name="list-outline" size={22} color={ICON_COLOR} />,
+    run: () => runTool("read_tasks"),
+  },
   {
     key: "flashlight",
     label: "Flashlight",

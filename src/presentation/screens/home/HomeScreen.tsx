@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@presentation/context/ThemeContext";
+import { useAuth } from "@presentation/context/AuthContext";
+import { useTasks } from "@presentation/context/TaskContext";
+import { useEvents } from "@presentation/context/EventContext";
 
 // Stat cards shown in the 2x2 grid at the top of the dashboard
 const STATS = [
@@ -68,7 +71,91 @@ const ACTIVITY = [
 
 export default function HomeScreen() {
   const { colors, isDarkMode } = useTheme();
+  const { user } = useAuth();
+  const { tasks } = useTasks();
+  const { events } = useEvents();
   const styles = createStyles(colors);
+
+  const firstName = user?.fullName?.split(" ")[0] || "there";
+
+  const greetingText = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good Morning";
+    if (hour < 18) return "Good Afternoon";
+    return "Good Evening";
+  }, []);
+
+  const formattedDate = useMemo(() => {
+    return new Date().toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+    });
+  }, []);
+
+  // Compute live real-time statistics
+  const pendingTasks = useMemo(() => tasks.filter((t) => !t.completed), [tasks]);
+  const completedTasks = useMemo(() => tasks.filter((t) => t.completed), [tasks]);
+  const highPriorityTasks = useMemo(
+    () => pendingTasks.filter((t) => t.priority === "High"),
+    [pendingTasks]
+  );
+
+  const dynamicStats = useMemo(
+    () => [
+      {
+        key: "pending",
+        icon: "📋",
+        value: String(pendingTasks.length),
+        label: "Tasks Pending",
+        accent: "#3D3B8E",
+      },
+      {
+        key: "events",
+        icon: "📅",
+        value: String(events.length),
+        label: "Events",
+        accent: "#0E8F7C",
+      },
+      {
+        key: "high_priority",
+        icon: "🔥",
+        value: String(highPriorityTasks.length),
+        label: "High Priority",
+        accent: "#EF4444",
+      },
+      {
+        key: "completed",
+        icon: "✅",
+        value: String(completedTasks.length),
+        label: "Completed",
+        accent: "#10B981",
+      },
+    ],
+    [pendingTasks.length, events.length, highPriorityTasks.length, completedTasks.length]
+  );
+
+  // Dynamic AI Insight generation based on real data
+  const aiInsight = useMemo(() => {
+    if (highPriorityTasks.length > 0) {
+      const top = highPriorityTasks[0];
+      return {
+        text: `You have ${pendingTasks.length} pending task(s), including urgent "${top.title}". Should we schedule time for this?`,
+        action: "Focus on this",
+      };
+    }
+    if (pendingTasks.length > 0) {
+      const top = pendingTasks[0];
+      return {
+        text: `You have ${pendingTasks.length} pending task(s), like "${top.title}". Keep up the great momentum!`,
+        action: "View tasks",
+      };
+    }
+    return {
+      text: "All caught up! You have 0 pending tasks. Enjoy your free time! 🎉",
+      action: "Plan tomorrow",
+    };
+  }, [highPriorityTasks, pendingTasks]);
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -87,9 +174,11 @@ export default function HomeScreen() {
         </View>
         <TouchableOpacity activeOpacity={0.7} style={styles.bellButton}>
           <Text style={styles.bellIcon}>🔔</Text>
-          <View style={styles.bellBadge}>
-            <Text style={styles.bellBadgeText}>3</Text>
-          </View>
+          {pendingTasks.length > 0 && (
+            <View style={styles.bellBadge}>
+              <Text style={styles.bellBadgeText}>{pendingTasks.length}</Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -98,12 +187,12 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Greeting */}
-        <Text style={styles.greeting}>Good Morning, Alex 👋</Text>
-        <Text style={styles.dateLabel}>Monday, October 24</Text>
+        <Text style={styles.greeting}>{greetingText}, {firstName} 👋</Text>
+        <Text style={styles.dateLabel}>{formattedDate}</Text>
 
         {/* Stat grid */}
         <View style={styles.statGrid}>
-          {STATS.map((stat) => (
+          {dynamicStats.map((stat) => (
             <View
               key={stat.key}
               style={[styles.statCard, { borderLeftColor: stat.accent }]}
@@ -119,45 +208,16 @@ export default function HomeScreen() {
           ))}
         </View>
 
-        {/* Recent Activity */}
-        <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionHeaderTitle}>Recent Activity</Text>
-          <TouchableOpacity activeOpacity={0.7}>
-            <Text style={styles.viewAllLink}>View All</Text>
-          </TouchableOpacity>
-        </View>
-
-        {ACTIVITY.map((item) => (
-          <TouchableOpacity
-            key={item.key}
-            activeOpacity={0.7}
-            style={styles.activityCard}
-          >
-            <View
-              style={[styles.activityIconWrap, { backgroundColor: item.iconBg }]}
-            >
-              <Text style={styles.activityIcon}>{item.icon}</Text>
-            </View>
-            <View style={styles.activityBody}>
-              <Text style={styles.activityTitle}>{item.title}</Text>
-              <Text style={styles.activitySubtitle}>{item.subtitle}</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-
         {/* AI Insight card */}
         <View style={styles.aiCard}>
           <View style={styles.aiHeaderRow}>
             <Text style={styles.aiSparkle}>✨</Text>
-            <Text style={styles.aiLabel}>AI Insight</Text>
+            <Text style={styles.aiLabel}>Proactive AI Insight</Text>
           </View>
-          <Text style={styles.aiText}>
-            You have a gap between 2 PM and 4 PM. Should I schedule your Q4
-            prep then?
-          </Text>
+          <Text style={styles.aiText}>{aiInsight.text}</Text>
           <View style={styles.aiActionsRow}>
             <TouchableOpacity activeOpacity={0.7} style={styles.aiPrimaryButton}>
-              <Text style={styles.aiPrimaryButtonText}>Yes, schedule it</Text>
+              <Text style={styles.aiPrimaryButtonText}>{aiInsight.action}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               activeOpacity={0.7}
