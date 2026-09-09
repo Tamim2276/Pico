@@ -1,0 +1,133 @@
+diff --git a/src/presentation/navigation/RootNavigator.tsx b/src/presentation/navigation/RootNavigator.tsx
+index bf08456..3065204 100644
+--- a/src/presentation/navigation/RootNavigator.tsx
++++ b/src/presentation/navigation/RootNavigator.tsx
+@@ -6,6 +6,7 @@ import SplashScreen from "@presentation/screens/auth/SplashScreen";
+ import SignUpScreen from "@presentation/screens/auth/SignUpScreen";
+ import LoginScreen from "@presentation/screens/auth/LoginScreen";
+ import MainTabs from "@presentation/navigation/MainTabs";
++import NotificationsScreen from "@presentation/screens/notifications/NotificationsScreen";
+ import { useAuth } from "@presentation/context/AuthContext";
+ 
+ const Stack = createNativeStackNavigator();
+@@ -25,7 +26,14 @@ export default function RootNavigator() {
+     <NavigationContainer>
+       <Stack.Navigator screenOptions={{ headerShown: false }}>
+         {user ? (
+-          <Stack.Screen name="MainTabs" component={MainTabs} />
++          <>
++            <Stack.Screen name="MainTabs" component={MainTabs} />
++            <Stack.Screen
++              name="Notifications"
++              component={NotificationsScreen}
++              options={{ presentation: "modal" }}
++            />
++          </>
+         ) : (
+           <>
+             <Stack.Screen name="Splash" component={SplashScreen} />
+diff --git a/src/presentation/screens/home/HomeScreen.tsx b/src/presentation/screens/home/HomeScreen.tsx
+index 2554a86..f303037 100644
+--- a/src/presentation/screens/home/HomeScreen.tsx
++++ b/src/presentation/screens/home/HomeScreen.tsx
+@@ -8,6 +8,7 @@ import {
+   ScrollView,
+ } from "react-native";
+ import { SafeAreaView } from "react-native-safe-area-context";
++import { useNavigation } from "@react-navigation/native";
+ import { useTheme } from "@presentation/context/ThemeContext";
+ import { useAuth } from "@presentation/context/AuthContext";
+ import { useTasks } from "@presentation/context/TaskContext";
+@@ -70,6 +71,7 @@ const ACTIVITY = [
+ ];
+ 
+ export default function HomeScreen() {
++  const navigation = useNavigation<any>();
+   const { colors, isDarkMode } = useTheme();
+   const { user } = useAuth();
+   const { tasks } = useTasks();
+@@ -172,7 +174,11 @@ export default function HomeScreen() {
+           </View>
+           <Text style={styles.brandTitle}>Pico</Text>
+         </View>
+-        <TouchableOpacity activeOpacity={0.7} style={styles.bellButton}>
++        <TouchableOpacity
++          activeOpacity={0.7}
++          style={styles.bellButton}
++          onPress={() => navigation.navigate("Notifications")}
++        >
+           <Text style={styles.bellIcon}>🔔</Text>
+           {pendingTasks.length > 0 && (
+             <View style={styles.bellBadge}>
+diff --git a/src/presentation/screens/profile/ProfileScreen.tsx b/src/presentation/screens/profile/ProfileScreen.tsx
+index d0338ac..b40b236 100644
+--- a/src/presentation/screens/profile/ProfileScreen.tsx
++++ b/src/presentation/screens/profile/ProfileScreen.tsx
+@@ -10,10 +10,12 @@ import {
+   Platform,
+ } from "react-native";
+ import { SafeAreaView } from "react-native-safe-area-context";
++import { useNavigation } from "@react-navigation/native";
+ import { useTheme } from "@presentation/context/ThemeContext";
+ import { useAuth } from "@presentation/context/AuthContext";
+ 
+ export default function ProfileScreen() {
++  const navigation = useNavigation<any>();
+   const { colors, isDarkMode, toggleDarkMode } = useTheme();
+   const { user, logout } = useAuth();
+   const styles = createStyles(colors);
+@@ -43,7 +45,11 @@ export default function ProfileScreen() {
+           </View>
+           <Text style={styles.brandTitle}>Pico</Text>
+         </View>
+-        <TouchableOpacity activeOpacity={0.7} style={styles.bellButton}>
++        <TouchableOpacity
++          activeOpacity={0.7}
++          style={styles.bellButton}
++          onPress={() => navigation.navigate("Notifications")}
++        >
+           <Text style={styles.bellIcon}>🔔</Text>
+         </TouchableOpacity>
+       </View>
+diff --git a/src/presentation/screens/tasks/TasksScreen.tsx b/src/presentation/screens/tasks/TasksScreen.tsx
+index ea333d7..7a5c126 100644
+--- a/src/presentation/screens/tasks/TasksScreen.tsx
++++ b/src/presentation/screens/tasks/TasksScreen.tsx
+@@ -11,6 +11,7 @@ import {
+ import { SafeAreaView } from "react-native-safe-area-context";
+ import { useTheme } from "@presentation/context/ThemeContext";
+ import { useTasks } from "@presentation/context/TaskContext";
++import NewTaskModal from "@presentation/components/NewTaskModal";
+ import type { Task, Priority } from "../../domain/entities/Task";
+ 
+ type FilterKey = "All" | "Pending" | "Completed";
+@@ -38,6 +39,7 @@ export default function TasksScreen({ navigation }: Props) {
+ 
+   const [query, setQuery] = useState("");
+   const [filter, setFilter] = useState<FilterKey>("All");
++  const [isAddModalVisible, setAddModalVisible] = useState(false);
+   const { tasks, toggleTaskCompletion } = useTasks();
+ 
+   const toggleTask = (id: string) => {
+@@ -74,11 +76,20 @@ export default function TasksScreen({ navigation }: Props) {
+       {/* Header */}
+       <View style={styles.header}>
+         <Text style={styles.headerTitle}>My Tasks</Text>
+-        <TouchableOpacity activeOpacity={0.7} style={styles.addButton}>
++        <TouchableOpacity
++          activeOpacity={0.7}
++          style={styles.addButton}
++          onPress={() => setAddModalVisible(true)}
++        >
+           <Text style={styles.addButtonText}>+</Text>
+         </TouchableOpacity>
+       </View>
+ 
++      <NewTaskModal
++        visible={isAddModalVisible}
++        onClose={() => setAddModalVisible(false)}
++      />
++
+       <ScrollView
+         contentContainerStyle={styles.scrollContent}
+         showsVerticalScrollIndicator={false}

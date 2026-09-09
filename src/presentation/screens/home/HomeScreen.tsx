@@ -8,6 +8,7 @@ import {
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "@presentation/context/ThemeContext";
 import { useAuth } from "@presentation/context/AuthContext";
 import { useTasks } from "@presentation/context/TaskContext";
@@ -70,6 +71,7 @@ const ACTIVITY = [
 ];
 
 export default function HomeScreen() {
+  const navigation = useNavigation<any>();
   const { colors, isDarkMode } = useTheme();
   const { user } = useAuth();
   const { tasks } = useTasks();
@@ -172,7 +174,11 @@ export default function HomeScreen() {
           </View>
           <Text style={styles.brandTitle}>Pico</Text>
         </View>
-        <TouchableOpacity activeOpacity={0.7} style={styles.bellButton}>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          style={styles.bellButton}
+          onPress={() => navigation.navigate("Notifications")}
+        >
           <Text style={styles.bellIcon}>🔔</Text>
           {pendingTasks.length > 0 && (
             <View style={styles.bellBadge}>
