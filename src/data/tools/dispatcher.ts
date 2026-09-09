@@ -148,5 +148,34 @@ export function matchIntent(text: string): ToolCall | null {
     return { name: "get_weather", args: {} };
   }
 
+
+  // 12. Play song / video on YouTube Fast-Path
+  if (/^\s*play\s+/i.test(t) || /\b(youtube|watch a video of|find a video of)\b/.test(t)) {
+    const query = t
+      .replace(/^\s*(please\s+)?play\s+/i, "")
+      .replace(/\b(on youtube|youtube|watch a video of|find a video of)\b/gi, "")
+      .replace(/\bfor me\b/gi, "")
+      .trim();
+    if (query) {
+      return { name: "search_youtube", args: { query } };
+    }
+  }
+
+  // 13. General web search Fast-Path — catches things Pico can't answer
+  // on-device: live scores, news, "who won", "what's the score of", etc.
+  if (
+    /\b(search for|google|look up|what'?s the score|score of|latest news on|who won)\b/i.test(t)
+  ) {
+    const query = t
+      .replace(/\b(search for|google|look up)\b/gi, "")
+      .trim();
+    if (query) {
+      return { name: "search_web", args: { query } };
+    }
+  }
+
+  return null;
+}
+
   return null;
 }

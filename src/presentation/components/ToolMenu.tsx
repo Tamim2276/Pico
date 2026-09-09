@@ -19,7 +19,21 @@ interface ToolMenuProps {
   onToolResult: (text: string) => void;
 }
 
-type ActionKey = "flashlight" | "battery" | "calendar" | "location" | "notify" | "create_task" | "read_tasks" | "daily_briefing" | "plan_goal" | "weather" | "timer";
+type ActionKey =
+  | "flashlight"
+  | "battery"
+  | "calendar"
+  | "location"
+  | "notify"
+  | "create_task"
+  | "read_tasks"
+  | "daily_briefing"
+  | "plan_goal"
+  | "weather"
+  | "timer"
+  | "maps"
+  | "youtube"
+  | "web_search";
 
 interface MenuAction {
   key: ActionKey;
@@ -41,7 +55,8 @@ const ACTIONS: MenuAction[] = [
     key: "timer",
     label: "15m Timer",
     icon: <Ionicons name="timer-outline" size={22} color={ICON_COLOR} />,
-    run: () => runTool("set_timer", { duration: "15 minutes", label: "Focus Session" }),
+    run: () =>
+      runTool("set_timer", { duration: "15 minutes", label: "Focus Session" }),
   },
   {
     key: "daily_briefing",
@@ -53,13 +68,20 @@ const ACTIONS: MenuAction[] = [
     key: "plan_goal",
     label: "Plan a Project",
     icon: <Ionicons name="bulb-outline" size={22} color={ICON_COLOR} />,
-    run: () => runTool("break_down_goal", { goal: "Software Engineering Final Submission" }),
+    run: () =>
+      runTool("break_down_goal", {
+        goal: "Software Engineering Final Submission",
+      }),
   },
   {
     key: "create_task",
     label: "Add Quick Task",
     icon: <Ionicons name="checkbox-outline" size={22} color={ICON_COLOR} />,
-    run: () => runTool("create_task", { title: "Test task from Pico Assistant", priority: "High" }),
+    run: () =>
+      runTool("create_task", {
+        title: "Test task from Pico Assistant",
+        priority: "High",
+      }),
   },
   {
     key: "read_tasks",
@@ -72,12 +94,15 @@ const ACTIONS: MenuAction[] = [
     label: "Flashlight",
     icon: <Ionicons name="flashlight-outline" size={22} color={ICON_COLOR} />,
     // one button toggles based on the live torch state
-    run: () => runTool("toggle_flashlight", { state: torchStore.get() ? "off" : "on" }),
+    run: () =>
+      runTool("toggle_flashlight", { state: torchStore.get() ? "off" : "on" }),
   },
   {
     key: "battery",
     label: "Battery status",
-    icon: <MaterialCommunityIcons name="battery-70" size={22} color={ICON_COLOR} />,
+    icon: (
+      <MaterialCommunityIcons name="battery-70" size={22} color={ICON_COLOR} />
+    ),
     run: () => runTool("battery_status"),
   },
   {
@@ -95,8 +120,26 @@ const ACTIONS: MenuAction[] = [
   {
     key: "notify",
     label: "Reschedule reminder",
-    icon: <Ionicons name="notifications-outline" size={22} color={ICON_COLOR} />,
+    icon: (
+      <Ionicons name="notifications-outline" size={22} color={ICON_COLOR} />
+    ),
     run: () => runTool("fire_notification"),
+  },
+  {
+    key: "youtube",
+    label: "Search YouTube",
+    icon: <Ionicons name="logo-youtube" size={22} color={ICON_COLOR} />,
+    // Preliminary: no free-text capture from this menu yet, so this demos
+    // the hand-off with a placeholder query. Real value is via chat, e.g.
+    // "play <song>", which the dispatcher fast-path routes with the actual
+    // song name as `query`.
+    run: () => runTool("search_youtube", { query: "trending music" }),
+  },
+  {
+    key: "web_search",
+    label: "Search the Web",
+    icon: <Ionicons name="search-outline" size={22} color={ICON_COLOR} />,
+    run: () => runTool("search_web", { query: "today's top news" }),
   },
 ];
 

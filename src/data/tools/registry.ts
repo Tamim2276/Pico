@@ -12,6 +12,8 @@ import { dailyBriefingTool } from "@data/tools/dailyBriefingTool";
 import { breakDownGoalTool } from "@data/tools/breakDownGoalTool";
 import { setTimerTool } from "@data/tools/setTimerTool";
 import { weatherTool } from "@data/tools/weatherTool";
+import { youtubeSearchTool } from "@data/tools/youtubeSearchTool";
+import { webSearchTool } from "@data/tools/webSearchTool";
 
 /**
  * The one place every tool is registered.
@@ -32,6 +34,8 @@ export const toolRegistry: Tool[] = [
   breakDownGoalTool,
   setTimerTool,
   weatherTool,
+  youtubeSearchTool,
+  webSearchTool,
 ];
 
 /** look a tool up by the name the LLM emitted */
