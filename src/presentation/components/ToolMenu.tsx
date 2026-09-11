@@ -33,7 +33,8 @@ type ActionKey =
   | "timer"
   | "maps"
   | "youtube"
-  | "web_search";
+  | "web_search"
+  | "route";
 
 interface MenuAction {
   key: ActionKey;
@@ -124,6 +125,25 @@ const ACTIONS: MenuAction[] = [
       <Ionicons name="notifications-outline" size={22} color={ICON_COLOR} />
     ),
     run: () => runTool("fire_notification"),
+  },
+  {
+    key: "maps",
+    label: "Open Maps",
+    icon: <Ionicons name="map-outline" size={22} color={ICON_COLOR} />,
+    // Preliminary: launches Maps with no destination pre-filled.
+    // Once there's a way to capture free text from this menu, pass it as
+    // `destination` here (e.g. runTool("open_in_maps", { destination })).
+    run: () => runTool("open_in_maps", { destination: "" }),
+  },
+  {
+    key: "route",
+    label: "Distance & ETA",
+    icon: <Ionicons name="navigate-outline" size={22} color={ICON_COLOR} />,
+    // Preliminary: demos with a fixed destination since this menu has no
+    // free-text input yet. Real value is via chat, e.g. "how far is
+    // Gulshan 2", which the dispatcher fast-path routes with the actual
+    // destination as `destination`.
+    run: () => runTool("get_route", { destination: "Dhaka University" }),
   },
   {
     key: "youtube",

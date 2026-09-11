@@ -14,6 +14,8 @@ import { setTimerTool } from "@data/tools/setTimerTool";
 import { weatherTool } from "@data/tools/weatherTool";
 import { youtubeSearchTool } from "@data/tools/youtubeSearchTool";
 import { webSearchTool } from "@data/tools/webSearchTool";
+import { openMapsTool } from "@data/tools/openMapsTool";
+import { getRouteTool } from "@data/tools/getRouteTool";
 
 /**
  * The one place every tool is registered.
@@ -36,6 +38,8 @@ export const toolRegistry: Tool[] = [
   weatherTool,
   youtubeSearchTool,
   webSearchTool,
+  openMapsTool,
+  getRouteTool,
 ];
 
 /** look a tool up by the name the LLM emitted */
