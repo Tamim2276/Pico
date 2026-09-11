@@ -10,10 +10,12 @@ import {
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "@presentation/context/ThemeContext";
 import { useAuth } from "@presentation/context/AuthContext";
 
 export default function ProfileScreen() {
+  const navigation = useNavigation<any>();
   const { colors, isDarkMode, toggleDarkMode } = useTheme();
   const { user, logout } = useAuth();
   const styles = createStyles(colors);
@@ -43,7 +45,11 @@ export default function ProfileScreen() {
           </View>
           <Text style={styles.brandTitle}>Pico</Text>
         </View>
-        <TouchableOpacity activeOpacity={0.7} style={styles.bellButton}>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          style={styles.bellButton}
+          onPress={() => navigation.navigate("Notifications")}
+        >
           <Text style={styles.bellIcon}>🔔</Text>
         </TouchableOpacity>
       </View>

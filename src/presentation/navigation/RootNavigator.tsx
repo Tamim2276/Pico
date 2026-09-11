@@ -6,6 +6,7 @@ import SplashScreen from "@presentation/screens/auth/SplashScreen";
 import SignUpScreen from "@presentation/screens/auth/SignUpScreen";
 import LoginScreen from "@presentation/screens/auth/LoginScreen";
 import MainTabs from "@presentation/navigation/MainTabs";
+import NotificationsScreen from "@presentation/screens/notifications/NotificationsScreen";
 import { useAuth } from "@presentation/context/AuthContext";
 
 const Stack = createNativeStackNavigator();
@@ -25,7 +26,14 @@ export default function RootNavigator() {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
-          <Stack.Screen name="MainTabs" component={MainTabs} />
+          <>
+            <Stack.Screen name="MainTabs" component={MainTabs} />
+            <Stack.Screen
+              name="Notifications"
+              component={NotificationsScreen}
+              options={{ presentation: "modal" }}
+            />
+          </>
         ) : (
           <>
             <Stack.Screen name="Splash" component={SplashScreen} />

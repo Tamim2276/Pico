@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@presentation/context/ThemeContext";
 import { useTasks } from "@presentation/context/TaskContext";
+import NewTaskModal from "@presentation/components/NewTaskModal";
 import type { Task, Priority } from "../../domain/entities/Task";
 
 type FilterKey = "All" | "Pending" | "Completed";
@@ -38,6 +39,7 @@ export default function TasksScreen({ navigation }: Props) {
 
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<FilterKey>("All");
+  const [isAddModalVisible, setAddModalVisible] = useState(false);
   const { tasks, toggleTaskCompletion } = useTasks();
 
   const toggleTask = (id: string) => {
@@ -74,10 +76,19 @@ export default function TasksScreen({ navigation }: Props) {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Tasks</Text>
-        <TouchableOpacity activeOpacity={0.7} style={styles.addButton}>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          style={styles.addButton}
+          onPress={() => setAddModalVisible(true)}
+        >
           <Text style={styles.addButtonText}>+</Text>
         </TouchableOpacity>
       </View>
+
+      <NewTaskModal
+        visible={isAddModalVisible}
+        onClose={() => setAddModalVisible(false)}
+      />
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
