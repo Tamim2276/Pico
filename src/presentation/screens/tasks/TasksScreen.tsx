@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import {
+  Alert,
   View,
   Text,
   TextInput,
@@ -40,11 +41,38 @@ export default function TasksScreen({ navigation }: Props) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<FilterKey>("All");
   const [isAddModalVisible, setAddModalVisible] = useState(false);
-  const { tasks, toggleTaskCompletion } = useTasks();
+  const { tasks, toggleTaskCompletion, deleteTask } = useTasks();
 
   const toggleTask = (id: string) => {
     const task = tasks.find(t => t.id === id);
     if (task) toggleTaskCompletion(task);
+  };
+
+  const handleDeleteRequest = (id: string) => {
+    const task = tasks.find((t) => t.id === id);
+    if (!task) return;
+    Alert.alert(
+      "Delete Task?",
+      `Delete "${task.title}"? This can't be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteTask(id);
+            } catch {
+              Alert.alert(
+                "Couldn't delete task",
+                "Something went wrong. Please try again."
+              );
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
   };
 
   const filteredTasks = useMemo(() => {
@@ -194,6 +222,17 @@ export default function TasksScreen({ navigation }: Props) {
                   )}
                 </View>
               </View>
+
+              <TouchableOpacity
+                activeOpacity={0.7}
+                style={styles.deleteButton}
+                onPress={() => handleDeleteRequest(task.id)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityRole="button"
+                accessibilityLabel={`Delete ${task.title}`}
+              >
+                <Text style={styles.deleteIcon}>🗑️</Text>
+              </TouchableOpacity>
             </View>
           );
         })}
@@ -359,6 +398,21 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"]) =>
 
     taskBody: {
       flex: 1,
+    },
+
+    deleteButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: colors.inputBg,
+      alignItems: "center",
+      justifyContent: "center",
+      marginLeft: 12,
+    },
+
+    deleteIcon: {
+      fontSize: 16,
+      color: colors.error,
     },
 
     taskTitle: {
