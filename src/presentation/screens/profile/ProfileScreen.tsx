@@ -1,5 +1,6 @@
 import React from "react";
 import {
+  Alert,
   View,
   Text,
   TouchableOpacity,
@@ -13,6 +14,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "@presentation/context/ThemeContext";
 import { useAuth } from "@presentation/context/AuthContext";
+
+const PRIVACY_TEXT =
+  "Pico keeps your data on your device, we don't run our own servers, and we don't store, process, or share your information.\n\nSome features need the internet (like weather, search, maps, or Telegram), and anything you send through those features is covered by that service's own privacy policy.";
 
 export default function ProfileScreen() {
   const navigation = useNavigation<any>();
@@ -102,7 +106,11 @@ export default function ProfileScreen() {
         {/* Security */}
         <Text style={styles.sectionLabel}>SECURITY</Text>
         <View style={styles.card}>
-          <TouchableOpacity activeOpacity={0.7} style={styles.row}>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={styles.row}
+            onPress={() => Alert.alert("Privacy", PRIVACY_TEXT)}
+          >
             <View style={styles.rowIconWrap}>
               <Text style={styles.rowIcon}>🛡️</Text>
             </View>
