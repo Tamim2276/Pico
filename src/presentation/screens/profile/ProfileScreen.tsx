@@ -1,6 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Alert,
+  Linking,
+  Modal,
   Share,
   View,
   Text,
@@ -23,11 +25,55 @@ import {
 const PRIVACY_TEXT =
   "Pico keeps your data on your device, we don't run our own servers, and we don't store, process, or share your information.\n\nSome features need the internet (like weather, search, maps, or Telegram), and anything you send through those features is covered by that service's own privacy policy.";
 
+const ABOUT_URL = "https://github.com/Tamim2276/Pico";
+
+const SUPPORT_EMAIL = "starfish-clutter04@bravealias.com";
+const SUPPORT_MAILTO = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("Pico Help")}`;
+
 export default function ProfileScreen() {
   const navigation = useNavigation<any>();
   const { colors, isDarkMode, toggleDarkMode } = useTheme();
   const { user, logout } = useAuth();
   const styles = createStyles(colors);
+  const [helpVisible, setHelpVisible] = useState(false);
+
+  const handleAbout = async () => {
+    try {
+      const supported = await Linking.canOpenURL(ABOUT_URL);
+      if (!supported) {
+        Alert.alert("Couldn't open link", ABOUT_URL);
+        return;
+      }
+      await Linking.openURL(ABOUT_URL);
+    } catch {
+      Alert.alert("Couldn't open link", ABOUT_URL);
+    }
+  };
+
+  const handleHelp = () => {
+    setHelpVisible(true);
+  };
+
+  const handleShareEmail = async () => {
+    try {
+      await Share.share({ message: SUPPORT_EMAIL });
+    } catch {
+      Alert.alert("Couldn't share email", SUPPORT_EMAIL);
+    }
+  };
+
+  const handleOpenMailApp = async () => {
+    try {
+      const supported = await Linking.canOpenURL(SUPPORT_MAILTO);
+      if (!supported) {
+        Alert.alert("Couldn't open mail app");
+        return;
+      }
+      await Linking.openURL(SUPPORT_MAILTO);
+    } catch {
+      Alert.alert("Couldn't open mail app");
+    }
+  };
 
   const handleDownloadData = async () => {
     try {
@@ -199,7 +245,13 @@ export default function ProfileScreen() {
         {/* Support */}
         <Text style={styles.sectionLabel}>SUPPORT</Text>
         <View style={styles.card}>
-          <TouchableOpacity activeOpacity={0.7} style={styles.row}>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={styles.row}
+            onPress={handleAbout}
+            accessibilityRole="link"
+            accessibilityLabel="About, opens Pico GitHub page"
+          >
             <View style={styles.rowIconWrap}>
               <Text style={styles.rowIcon}>ℹ️</Text>
             </View>
@@ -208,7 +260,13 @@ export default function ProfileScreen() {
             <Text style={styles.chevron}>›</Text>
           </TouchableOpacity>
           <View style={styles.divider} />
-          <TouchableOpacity activeOpacity={0.7} style={styles.row}>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={styles.row}
+            onPress={handleHelp}
+            accessibilityRole="link"
+            accessibilityLabel="Help, contact support by email"
+          >
             <View style={styles.rowIconWrap}>
               <Text style={styles.rowIcon}>❓</Text>
             </View>
@@ -226,6 +284,50 @@ export default function ProfileScreen() {
           <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      <Modal
+        visible={helpVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setHelpVisible(false)}
+      >
+        <View style={styles.helpOverlay}>
+          <View style={styles.helpCard}>
+            <Text style={styles.helpTitle}>Need help?</Text>
+            <Text style={styles.helpText}>Reach out to us at:</Text>
+            <View style={styles.emailBlock}>
+              <Text style={styles.emailText} selectable>
+                {SUPPORT_EMAIL}
+              </Text>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                style={styles.copyButton}
+                onPress={handleShareEmail}
+                accessibilityRole="button"
+                accessibilityLabel="Copy support email"
+              >
+                <Text style={styles.copyButtonText}>⧉</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.helpActions}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                style={styles.helpPrimaryButton}
+                onPress={handleOpenMailApp}
+              >
+                <Text style={styles.helpPrimaryButtonText}>Open mail app</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                style={styles.helpSecondaryButton}
+                onPress={() => setHelpVisible(false)}
+              >
+                <Text style={styles.helpSecondaryButtonText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -427,5 +529,98 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"]) =>
       fontSize: 15,
       fontWeight: "bold",
       color: colors.error,
+    },
+
+    helpOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.45)",
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 32,
+    },
+
+    helpCard: {
+      width: "100%",
+      backgroundColor: colors.surface,
+      borderRadius: 20,
+      padding: 22,
+    },
+
+    helpTitle: {
+      fontSize: 18,
+      fontWeight: "bold",
+      color: colors.textPrimary,
+      marginBottom: 6,
+    },
+
+    helpText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginBottom: 12,
+    },
+
+    emailBlock: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.inputBg,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      marginBottom: 18,
+      gap: 10,
+    },
+
+    emailText: {
+      flex: 1,
+      fontSize: 13,
+      fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+      color: colors.textPrimary,
+    },
+
+    copyButton: {
+      backgroundColor: colors.primaryDark,
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+    },
+
+    copyButtonText: {
+      fontSize: 12,
+      fontWeight: "bold",
+      color: "#FFFFFF",
+    },
+
+    helpActions: {
+      flexDirection: "row",
+      gap: 10,
+    },
+
+    helpPrimaryButton: {
+      flex: 1,
+      backgroundColor: colors.primaryDark,
+      borderRadius: 12,
+      paddingVertical: 12,
+      alignItems: "center",
+    },
+
+    helpPrimaryButtonText: {
+      fontSize: 14,
+      fontWeight: "bold",
+      color: "#FFFFFF",
+    },
+
+    helpSecondaryButton: {
+      flex: 1,
+      borderRadius: 12,
+      paddingVertical: 12,
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: colors.divider,
+    },
+
+    helpSecondaryButtonText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: colors.textSecondary,
     },
   });
