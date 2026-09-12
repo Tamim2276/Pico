@@ -19,6 +19,7 @@ import {
   type TelegramMatchCandidate,
   type CloudToolCall,
 } from "@shared/utils/telegramParse";
+import { getTelegramBotToken } from "@data/local/telegramTokenStore";
 
 const OFFSET_KEY = "TELEGRAM_LAST_UPDATE_ID";
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
@@ -61,9 +62,11 @@ export const telegramBotTools: Tool = {
     properties: {},
   },
   execute: async (args: Record<string, any> = {}): Promise<ToolResult> => {
-    const token = process.env.EXPO_PUBLIC_TELEGRAM_BOT_TOKEN;
+    // Runtime token: Profile-saved SecureStore key wins, `.env`
+    // build-time value is the fallback (see telegramTokenStore).
+    const token = await getTelegramBotToken();
     if (!token) {
-      return { ok: false, message: "Missing EXPO_PUBLIC_TELEGRAM_BOT_TOKEN in .env" };
+      return { ok: false, message: "Missing Telegram bot token. Add it in Profile → Telegram Bot." };
     }
 
     try {

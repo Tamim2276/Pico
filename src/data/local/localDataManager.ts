@@ -11,6 +11,7 @@ const REMINDERS_KEY = "PICO_REMINDERS";
 const USERS_KEY = "PICO_LOCAL_USERS";
 const SESSION_KEY = "PICO_CURRENT_SESSION";
 const TELEGRAM_OFFSET_KEY = "TELEGRAM_LAST_UPDATE_ID";
+const TELEGRAM_BOT_TOKEN_KEY = "PICO_TELEGRAM_BOT_TOKEN";
 
 const taskRepo = new LocalTaskRepository();
 const eventRepo = new LocalEventRepository();
@@ -42,8 +43,9 @@ export async function exportLocalData(): Promise<PicoDataExport> {
 }
 
 /**
- * Erases all Pico local data, including accounts + session (logs out)
- * and the Telegram sync offset. Notifies task/event lists to refresh.
+ * Erases all Pico local data, including accounts + session (logs out),
+ * the saved Telegram bot token, and the Telegram sync offset. Notifies
+ * task/event lists to refresh.
  * Expo SecureStore v54: deleteItemAsync(key) rejects on failure.
  */
 export async function eraseAllLocalData(): Promise<void> {
@@ -53,6 +55,7 @@ export async function eraseAllLocalData(): Promise<void> {
     SecureStore.deleteItemAsync(REMINDERS_KEY).catch(() => {}),
     SecureStore.deleteItemAsync(USERS_KEY).catch(() => {}),
     SecureStore.deleteItemAsync(SESSION_KEY).catch(() => {}),
+    SecureStore.deleteItemAsync(TELEGRAM_BOT_TOKEN_KEY).catch(() => {}),
     AsyncStorage.removeItem(TELEGRAM_OFFSET_KEY).catch(() => {}),
   ]);
   taskEventBus.emit();

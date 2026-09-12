@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Linking,
@@ -6,6 +6,7 @@ import {
   Share,
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   Switch,
   StyleSheet,
@@ -21,6 +22,12 @@ import {
   eraseAllLocalData,
   exportLocalData,
 } from "@data/local/localDataManager";
+import {
+  deleteTelegramBotToken,
+  hasCustomTelegramToken,
+  hasTelegramToken,
+  saveTelegramBotToken,
+} from "@data/local/telegramTokenStore";
 
 const PRIVACY_TEXT =
   "Pico keeps your data on your device, we don't run our own servers, and we don't store, process, or share your information.\n\nSome features need the internet (like weather, search, maps, or Telegram), and anything you send through those features is covered by that service's own privacy policy.";
@@ -36,6 +43,97 @@ export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const styles = createStyles(colors);
   const [helpVisible, setHelpVisible] = useState(false);
+  const [tokenModalVisible, setTokenModalVisible] = useState(false);
+  const [tokenInput, setTokenInput] = useState("");
+  const [hasCustomToken, setHasCustomToken] = useState(false);
+  const [hasAnyToken, setHasAnyToken] = useState(false);
+  const [tokenChecking, setTokenChecking] = useState(true);
+  const [tokenSaving, setTokenSaving] = useState(false);
+
+  const refreshTokenStatus = useCallback(async () => {
+    try {
+      const [custom, any] = await Promise.all([
+        hasCustomTelegramToken(),
+        hasTelegramToken(),
+      ]);
+      setHasCustomToken(custom);
+      setHasAnyToken(any);
+    } catch {
+      // Status check must never break the Profile page.
+    } finally {
+      setTokenChecking(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshTokenStatus();
+  }, [refreshTokenStatus]);
+
+  const tokenStatusLabel = tokenChecking
+    ? "Checking…"
+    : hasCustomToken
+      ? "Connected"
+      : hasAnyToken
+        ? "Using build config"
+        : "Not connected";
+
+  const handleOpenTokenModal = () => {
+    setTokenInput("");
+    setTokenModalVisible(true);
+  };
+
+  const handleCloseTokenModal = () => {
+    setTokenModalVisible(false);
+    setTokenInput("");
+  };
+
+  const handleSaveToken = async () => {
+    const cleaned = tokenInput.trim();
+    if (!cleaned) {
+      Alert.alert("Token is empty", "Paste your Telegram bot token first.");
+      return;
+    }
+    setTokenSaving(true);
+    try {
+      await saveTelegramBotToken(cleaned);
+      await refreshTokenStatus();
+      handleCloseTokenModal();
+    } catch {
+      Alert.alert(
+        "Couldn't save token",
+        "Something went wrong. Please try again."
+      );
+    } finally {
+      setTokenSaving(false);
+    }
+  };
+
+  const handleDeleteToken = () => {
+    Alert.alert(
+      "Remove Telegram token?",
+      "This clears the saved bot token and resets the Telegram sync position. The app will fall back to the build-time token, if one exists.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteTelegramBotToken();
+              await refreshTokenStatus();
+              handleCloseTokenModal();
+            } catch {
+              Alert.alert(
+                "Couldn't remove token",
+                "Something went wrong. Please try again."
+              );
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
 
   const handleAbout = async () => {
     try {
@@ -93,7 +191,7 @@ export default function ProfileScreen() {
   const handleDeleteData = () => {
     Alert.alert(
       "Delete all data?",
-      "This erases your tasks, events, reminders, Telegram sync state, accounts, and logs you out. This can't be undone.",
+      "This erases your tasks, events, reminders, saved Telegram bot token, Telegram sync state, accounts, and logs you out. This can't be undone.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -242,6 +340,35 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Integrations */}
+        <Text style={styles.sectionLabel}>INTEGRATIONS</Text>
+        <View style={styles.card}>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={styles.row}
+            onPress={handleOpenTokenModal}
+            accessibilityRole="button"
+            accessibilityLabel={`Telegram Bot, ${tokenStatusLabel}`}
+          >
+            <View style={styles.rowIconWrap}>
+              <Text style={styles.rowIcon}>✈️</Text>
+            </View>
+            <Text style={styles.rowLabel}>Telegram Bot</Text>
+            <View style={styles.statusWrap}>
+              <View
+                style={[
+                  styles.statusDot,
+                  hasCustomToken || hasAnyToken
+                    ? styles.statusDotOn
+                    : styles.statusDotOff,
+                ]}
+              />
+              <Text style={styles.rowMeta}>{tokenStatusLabel}</Text>
+            </View>
+            <Text style={styles.chevron}>›</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Support */}
         <Text style={styles.sectionLabel}>SUPPORT</Text>
         <View style={styles.card}>
@@ -325,6 +452,90 @@ export default function ProfileScreen() {
                 <Text style={styles.helpSecondaryButtonText}>Close</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={tokenModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={handleCloseTokenModal}
+      >
+        <View style={styles.helpOverlay}>
+          <View style={styles.helpCard}>
+            <Text style={styles.helpTitle}>Telegram Bot Token</Text>
+            <Text style={styles.helpText}>
+              Paste a bot token from @BotFather to enable Telegram sync. It is
+              stored encrypted on this device only and never shown again.
+            </Text>
+            {hasCustomToken ? (
+              <View style={styles.tokenSavedBlock}>
+                <View style={[styles.statusDot, styles.statusDotOn]} />
+                <Text style={styles.tokenSavedText}>
+                  ●●●●●●●● Saved on this device
+                </Text>
+              </View>
+            ) : hasAnyToken ? (
+              <View style={styles.tokenSavedBlock}>
+                <View style={[styles.statusDot, styles.statusDotOn]} />
+                <Text style={styles.tokenSavedText}>
+                  Using build-time token — save one here to override it.
+                </Text>
+              </View>
+            ) : null}
+            <TextInput
+              style={styles.tokenInput}
+              value={tokenInput}
+              onChangeText={setTokenInput}
+              placeholder={
+                hasCustomToken ? "Paste a new token to replace…" : "Paste token…"
+              }
+              placeholderTextColor={colors.textHint}
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="off"
+              editable={!tokenSaving}
+              accessibilityLabel="Telegram bot token input"
+            />
+            <View style={styles.helpActions}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                style={[
+                  styles.helpPrimaryButton,
+                  tokenSaving && styles.disabledButton,
+                ]}
+                onPress={handleSaveToken}
+                disabled={tokenSaving}
+                accessibilityRole="button"
+                accessibilityLabel="Save Telegram token"
+              >
+                <Text style={styles.helpPrimaryButtonText}>
+                  {tokenSaving ? "Saving…" : "Save"}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                style={styles.helpSecondaryButton}
+                onPress={handleCloseTokenModal}
+                accessibilityRole="button"
+                accessibilityLabel="Close Telegram token dialog"
+              >
+                <Text style={styles.helpSecondaryButtonText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+            {hasCustomToken ? (
+              <TouchableOpacity
+                activeOpacity={0.7}
+                style={styles.tokenDeleteButton}
+                onPress={handleDeleteToken}
+                accessibilityRole="button"
+                accessibilityLabel="Delete Telegram token"
+              >
+                <Text style={styles.tokenDeleteText}>Remove saved token</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
         </View>
       </Modal>
@@ -622,5 +833,75 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"]) =>
       fontSize: 14,
       fontWeight: "600",
       color: colors.textSecondary,
+    },
+
+    statusWrap: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginRight: 8,
+      gap: 6,
+    },
+
+    statusDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+    },
+
+    statusDotOn: {
+      backgroundColor: "#22C55E",
+    },
+
+    statusDotOff: {
+      backgroundColor: colors.textHint,
+    },
+
+    tokenSavedBlock: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.inputBg,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      marginBottom: 12,
+      gap: 10,
+    },
+
+    tokenSavedText: {
+      flex: 1,
+      fontSize: 13,
+      fontWeight: "600",
+      color: colors.textSecondary,
+    },
+
+    tokenInput: {
+      backgroundColor: colors.inputBg,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      fontSize: 14,
+      color: colors.textPrimary,
+      marginBottom: 18,
+      borderWidth: 1,
+      borderColor: colors.divider,
+    },
+
+    tokenDeleteButton: {
+      marginTop: 12,
+      borderRadius: 12,
+      paddingVertical: 12,
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: colors.error,
+    },
+
+    tokenDeleteText: {
+      fontSize: 14,
+      fontWeight: "bold",
+      color: colors.error,
+    },
+
+    disabledButton: {
+      opacity: 0.6,
     },
   });
