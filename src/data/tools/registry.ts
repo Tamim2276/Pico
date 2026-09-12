@@ -16,6 +16,7 @@ import { youtubeSearchTool } from "@data/tools/youtubeSearchTool";
 import { webSearchTool } from "@data/tools/webSearchTool";
 import { openMapsTool } from "@data/tools/openMapsTool";
 import { getRouteTool } from "@data/tools/getRouteTool";
+import { telegramBotTools } from "@data/tools/telegramBotTools";
 
 /**
  * The one place every tool is registered.
@@ -40,6 +41,7 @@ export const toolRegistry: Tool[] = [
   webSearchTool,
   openMapsTool,
   getRouteTool,
+  telegramBotTools,
 ];
 
 /** look a tool up by the name the LLM emitted */

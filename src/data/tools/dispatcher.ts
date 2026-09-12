@@ -251,7 +251,16 @@ export function matchIntent(text: string): ToolCall | null {
     }
   }
 
-  // 14. General web search Fast-Path — catches things Pico can't answer
+  // 14. Telegram updates Fast-Path
+  if (
+    /\b(telegram updates|check telegram|telegram msg|telegram message|any tg news)\b/i.test(
+      t,
+    )
+  ) {
+    return { name: "telegram_updates", args: {} };
+  }
+
+  // 15. General web search Fast-Path — catches things Pico can't answer
   // on-device: live scores, news, "who won", "what's the score of", etc.
   if (
     /\b(search for|google|look up|what'?s the score|score of|latest news on|who won)\b/i.test(

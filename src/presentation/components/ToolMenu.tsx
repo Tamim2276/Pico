@@ -7,6 +7,7 @@ import {
   Modal,
   Pressable,
   ActivityIndicator,
+  ScrollView,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -34,7 +35,8 @@ type ActionKey =
   | "maps"
   | "youtube"
   | "web_search"
-  | "route";
+  | "route"
+  | "telegram";
 
 interface MenuAction {
   key: ActionKey;
@@ -161,6 +163,12 @@ const ACTIONS: MenuAction[] = [
     icon: <Ionicons name="search-outline" size={22} color={ICON_COLOR} />,
     run: () => runTool("search_web", { query: "today's top news" }),
   },
+  {
+    key: "telegram",
+    label: "Telegram updates",
+    icon: <Ionicons name="send-outline" size={22} color={ICON_COLOR} />,
+    run: () => runTool("telegram_updates"),
+  },
 ];
 
 export default function ToolMenu({ onToolResult }: ToolMenuProps) {
@@ -189,7 +197,7 @@ export default function ToolMenu({ onToolResult }: ToolMenuProps) {
         onPress={() => setOpen(true)}
         style={[styles.trigger, { top: insets.top + 8 }]}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        accessibilitylabel="Open tools menu"
+        accessibilityLabel="Open tools menu"
       >
         <Ionicons name="menu" size={26} color={ICON_COLOR} />
       </TouchableOpacity>
@@ -209,6 +217,12 @@ export default function ToolMenu({ onToolResult }: ToolMenuProps) {
           >
             <Text style={styles.cardTitle}>Tools</Text>
 
+            <ScrollView
+              style={styles.list}
+              contentContainerStyle={styles.listContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
             {ACTIONS.map((action) => {
               const isBusy = busy === action.key;
               return (
@@ -231,6 +245,7 @@ export default function ToolMenu({ onToolResult }: ToolMenuProps) {
                 </TouchableOpacity>
               );
             })}
+            </ScrollView>
           </Pressable>
         </Pressable>
       </Modal>
@@ -260,6 +275,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 16,
     width: 240,
+    maxHeight: 480,
     backgroundColor: "#1E1F20",
     borderRadius: 18,
     paddingVertical: 8,
@@ -281,6 +297,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingTop: 6,
     paddingBottom: 8,
+  },
+
+  list: {
+    maxHeight: 380,
+  },
+
+  listContent: {
+    paddingBottom: 4,
   },
 
   item: {

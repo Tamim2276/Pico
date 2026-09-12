@@ -19,6 +19,7 @@ const TOOL_ARG_MODE: Record<string, "none" | "flashlight" | "create_task" | "cre
   break_down_goal: "break_down_goal",
   set_timer: "set_timer",
   get_weather: "get_weather",
+  telegram_updates: "none",
 };
 
 const extractFirstBalancedJsonObject = (text: string): string | null => {
@@ -240,6 +241,9 @@ export const parseToolCallFromGemma = (raw: string): ParsedToolCall | null => {
     }
     if (cleaned.includes('"current_location"')) {
       return { name: "current_location", args: {} };
+    }
+    if (cleaned.includes('"telegram_updates"')) {
+      return { name: "telegram_updates", args: {} };
     }
     return null;
   }

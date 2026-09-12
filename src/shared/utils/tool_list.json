@@ -131,5 +131,13 @@
         "city": { "type": "string", "description": "Optional city name." }
       }
     }
+  },
+  {
+    "name": "telegram_updates",
+    "description": "Fetch latest Telegram bot updates and log raw JSON to console.",
+    "parameters": {
+      "type": "object",
+      "properties": {}
+    }
   }
 ]
