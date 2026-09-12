@@ -15,9 +15,9 @@ import { useTheme } from "@presentation/context/ThemeContext";
 import {
   DeviceEvent,
   ensureCalendarPermission,
-  fetchEvents,
   openNativeCalendar,
 } from "@data/calendar/deviceCalendar";
+import { fetchUpcomingNotifications } from "@presentation/hooks/useUpcomingNotificationCount";
 
 type PermState = "unknown" | "granted" | "denied";
 
@@ -52,14 +52,8 @@ export default function NotificationsScreen({ navigation }: Props) {
       return;
     }
     setPerm("granted");
-    const now = new Date();
-    const in7 = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-    try {
-      const events = await fetchEvents(now, in7);
-      setItems(events.filter((e) => (e.end ?? e.start).getTime() >= now.getTime()));
-    } catch {
-      setItems([]);
-    }
+    // Same source as the home bell badge (now -> +7 days, not-ended filter).
+    setItems(await fetchUpcomingNotifications());
     setLoading(false);
   }, []);
 

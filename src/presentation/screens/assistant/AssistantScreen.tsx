@@ -7,6 +7,7 @@ import {
   Alert,
 } from "react-native";
 import React, { useState, useRef, useEffect } from "react";
+import { useRoute } from "@react-navigation/native";
 
 import { createLLMProvider } from "@shared/utils/llm";
 import { parseToolCallFromGemma, executeToolCallFromGemma } from "@shared/utils/toolExecutor";
@@ -48,7 +49,8 @@ const buildToolAwarePrompt = (userText: string, telemetry: string) => [
   "",
   "Instructions:",
   "- If the user is chatting, greeting, or asking general questions (e.g. 'Hi', 'Who are you', 'What is today'), reply naturally in plain text. NEVER output JSON for general conversation.",
-  "- ONLY emit JSON when the user specifically requests an action (create task, schedule event, set timer, turn on light, daily briefing).",
+  "- ONLY emit JSON when the user specifically requests an action (create task, schedule event, set timer, turn on light, daily briefing, telegram updates).",
+  "- Valid tool names: toggle_flashlight, battery_status, read_calendar, current_location, fire_notification, create_task, read_tasks, create_event, mark_task_completed, daily_briefing, break_down_goal, plan_my_day, set_timer, get_weather, telegram_updates. NEVER invent other names.",
   "",
   "Examples:",
   "User: Hi",
@@ -84,6 +86,9 @@ const buildToolAwarePrompt = (userText: string, telemetry: string) => [
   "User: What tasks do I have?",
   '{"name": "read_tasks", "args": {}}',
   "",
+  "User: Check telegram msg",
+  '{"name": "telegram_updates", "args": {}}',
+  "",
   `User: ${userText}`,
   "Pico:"
 ].join("\n");
@@ -94,6 +99,8 @@ export function AssistantScreen() {
   const [gemmaLoading, setGemmaLoading] = useState(false);
   const [modelPickerOpen, setModelPickerOpen] = useState(false);
   const { tasks } = useTasks();
+  const route = useRoute<any>();
+  const postedPlanRef = useRef<string | null>(null);
 
   const flatListRef = useRef<FlatList>(null);
 
@@ -128,6 +135,19 @@ export function AssistantScreen() {
     return unsubscribe;
   }, []);
 
+  // Plans posted by the Home / Tasks "Plan" buttons arrive as route params.
+  const incomingPlan = route.params?.plan;
+  useEffect(() => {
+    if (
+      typeof incomingPlan === "string" &&
+      incomingPlan.trim() &&
+      postedPlanRef.current !== incomingPlan
+    ) {
+      postedPlanRef.current = incomingPlan;
+      pushAssistantMessage(incomingPlan);
+    }
+  }, [incomingPlan]);
+
   const handleSend = async () => {
     if (!inputText.trim() || gemmaLoading) return;
 
@@ -144,6 +164,7 @@ export function AssistantScreen() {
     const fastCall = matchIntent(text);
     if (fastCall) {
       setInputText("");
+      console.log("[assistant] fast-path →", fastCall.name);
       const responseText = fastCall.directMessage
         ? fastCall.directMessage
         : (await runTool(fastCall.name, fastCall.args)).message;
@@ -186,6 +207,7 @@ export function AssistantScreen() {
 
       const toolCall = parseToolCallFromGemma(raw);
       if (toolCall) {
+        console.log("[assistant] local-llm →", toolCall.name);
         const toolResult = await executeToolCallFromGemma(raw);
         const picoMessage: Message = {
           id: Date.now().toString(),

@@ -266,6 +266,7 @@ export default function CalendarScreen({ navigation }: Props) {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Calendar</Text>
+        {/* TEMP-DISABLED: Open Calendar app button — uncomment to restore
         <TouchableOpacity
           activeOpacity={0.8}
           style={styles.openAppButton}
@@ -273,6 +274,7 @@ export default function CalendarScreen({ navigation }: Props) {
         >
           <Text style={styles.openAppButtonText}>📅 Open Calendar app</Text>
         </TouchableOpacity>
+        */}
       </View>
 
       <ScrollView

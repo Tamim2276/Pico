@@ -18,9 +18,18 @@ export async function runTool(
 ): Promise<ToolResult> {
   const tool = getTool(name);
   if (!tool) return { ok: false, message: `Unknown tool: ${name}` };
+  console.log("[tool] →", name, JSON.stringify(args).slice(0, 200));
   try {
-    return await tool.execute(args);
+    const result = await tool.execute(args);
+    console.log(
+      "[tool] ←",
+      name,
+      result.ok ? "ok" : "fail",
+      (result.message || "").split("\n")[0].slice(0, 200)
+    );
+    return result;
   } catch (e: any) {
+    console.log("[tool] ←", name, "error", String(e?.message ?? e).slice(0, 200));
     return { ok: false, message: `"${name}" failed: ${e?.message ?? e}` };
   }
 }
@@ -165,6 +174,16 @@ export function matchIntent(text: string): ToolCall | null {
     }
   }
 
+  // 7b. Plan My Day skill — must come before the Break Down Goal block
+  // below since "plan my day" also matches its "plan my" pattern.
+  if (
+    /\b(plan my day|plan tomorrow|plan today|what should i do today|help me plan (my|the|this) day)\b/.test(
+      t,
+    )
+  ) {
+    return { name: "plan_my_day", args: {} };
+  }
+
   // 8. Break Down Goal / Planner Fast-Path
   if (
     /\b(plan my|break down|help me plan|help me prepare for|create a plan for|generate subtasks for)\b/.test(
@@ -251,7 +270,16 @@ export function matchIntent(text: string): ToolCall | null {
     }
   }
 
-  // 14. General web search Fast-Path — catches things Pico can't answer
+  // 14. Telegram updates Fast-Path
+  if (
+    /\b(telegram updates|check telegram|telegram msg|telegram message|any tg news)\b/i.test(
+      t,
+    )
+  ) {
+    return { name: "telegram_updates", args: {} };
+  }
+
+  // 15. General web search Fast-Path — catches things Pico can't answer
   // on-device: live scores, news, "who won", "what's the score of", etc.
   if (
     /\b(search for|google|look up|what'?s the score|score of|latest news on|who won)\b/i.test(

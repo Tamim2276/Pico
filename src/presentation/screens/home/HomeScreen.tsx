@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -13,6 +13,8 @@ import { useTheme } from "@presentation/context/ThemeContext";
 import { useAuth } from "@presentation/context/AuthContext";
 import { useTasks } from "@presentation/context/TaskContext";
 import { useEvents } from "@presentation/context/EventContext";
+import { useUpcomingNotificationCount } from "@presentation/hooks/useUpcomingNotificationCount";
+import { runTool } from "@data/tools/dispatcher";
 
 // Stat cards shown in the 2x2 grid at the top of the dashboard
 const STATS = [
@@ -76,6 +78,9 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const { tasks } = useTasks();
   const { events } = useEvents();
+  // Bell badge reflects actual notifications (upcoming calendar reminders),
+  // not pending tasks, so it hides when the Notifications screen is empty.
+  const { count: notificationCount } = useUpcomingNotificationCount();
   const styles = createStyles(colors);
 
   const firstName = user?.fullName?.split(" ")[0] || "there";
@@ -159,6 +164,22 @@ export default function HomeScreen() {
     };
   }, [highPriorityTasks, pendingTasks]);
 
+  // Dismiss hides the card until the insight itself changes (keyed by text).
+  const [dismissedInsight, setDismissedInsight] = useState<string | null>(null);
+  const [planning, setPlanning] = useState(false);
+  const showAiCard = dismissedInsight !== aiInsight.text;
+
+  const handlePlanPress = async () => {
+    if (planning) return;
+    setPlanning(true);
+    try {
+      const result = await runTool("plan_my_day", {});
+      navigation.navigate("Assistant", { plan: result.message });
+    } finally {
+      setPlanning(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <StatusBar
@@ -178,11 +199,19 @@ export default function HomeScreen() {
           activeOpacity={0.7}
           style={styles.bellButton}
           onPress={() => navigation.navigate("Notifications")}
+          accessibilityRole="button"
+          accessibilityLabel={
+            notificationCount > 0
+              ? `${notificationCount} unread notifications`
+              : "Notifications, no unread notifications"
+          }
         >
           <Text style={styles.bellIcon}>🔔</Text>
-          {pendingTasks.length > 0 && (
+          {notificationCount > 0 && (
             <View style={styles.bellBadge}>
-              <Text style={styles.bellBadgeText}>{pendingTasks.length}</Text>
+              <Text style={styles.bellBadgeText}>
+                {notificationCount > 99 ? "99+" : String(notificationCount)}
+              </Text>
             </View>
           )}
         </TouchableOpacity>
@@ -215,6 +244,7 @@ export default function HomeScreen() {
         </View>
 
         {/* AI Insight card */}
+        {showAiCard && (
         <View style={styles.aiCard}>
           <View style={styles.aiHeaderRow}>
             <Text style={styles.aiSparkle}>✨</Text>
@@ -222,17 +252,30 @@ export default function HomeScreen() {
           </View>
           <Text style={styles.aiText}>{aiInsight.text}</Text>
           <View style={styles.aiActionsRow}>
-            <TouchableOpacity activeOpacity={0.7} style={styles.aiPrimaryButton}>
-              <Text style={styles.aiPrimaryButtonText}>{aiInsight.action}</Text>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={[styles.aiPrimaryButton, planning && { opacity: 0.6 }]}
+              onPress={handlePlanPress}
+              disabled={planning}
+              accessibilityRole="button"
+              accessibilityLabel="Plan my day with AI"
+            >
+              <Text style={styles.aiPrimaryButtonText}>
+                {planning ? "Planning…" : aiInsight.action}
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               activeOpacity={0.7}
               style={styles.aiSecondaryButton}
+              onPress={() => setDismissedInsight(aiInsight.text)}
+              accessibilityRole="button"
+              accessibilityLabel="Dismiss insight"
             >
               <Text style={styles.aiSecondaryButtonText}>Dismiss</Text>
             </TouchableOpacity>
           </View>
         </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
