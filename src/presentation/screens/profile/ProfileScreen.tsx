@@ -1,6 +1,7 @@
 import React from "react";
 import {
   Alert,
+  Share,
   View,
   Text,
   TouchableOpacity,
@@ -14,6 +15,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "@presentation/context/ThemeContext";
 import { useAuth } from "@presentation/context/AuthContext";
+import {
+  eraseAllLocalData,
+  exportLocalData,
+} from "@data/local/localDataManager";
 
 const PRIVACY_TEXT =
   "Pico keeps your data on your device, we don't run our own servers, and we don't store, process, or share your information.\n\nSome features need the internet (like weather, search, maps, or Telegram), and anything you send through those features is covered by that service's own privacy policy.";
@@ -23,6 +28,64 @@ export default function ProfileScreen() {
   const { colors, isDarkMode, toggleDarkMode } = useTheme();
   const { user, logout } = useAuth();
   const styles = createStyles(colors);
+
+  const handleDownloadData = async () => {
+    try {
+      const data = await exportLocalData();
+      await Share.share({
+        message: JSON.stringify(data, null, 2),
+        title: "Pico data export",
+      });
+    } catch {
+      Alert.alert(
+        "Couldn't export data",
+        "Something went wrong. Please try again."
+      );
+    }
+  };
+
+  const handleDeleteData = () => {
+    Alert.alert(
+      "Delete all data?",
+      "This erases your tasks, events, reminders, Telegram sync state, accounts, and logs you out. This can't be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete everything",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await eraseAllLocalData();
+              await logout();
+            } catch {
+              Alert.alert(
+                "Couldn't delete data",
+                "Something went wrong. Please try again."
+              );
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  const handleAccountSecurity = () => {
+    Alert.alert(
+      "Account Security",
+      "Your data stays on this device.",
+      [
+        { text: "Download my data", onPress: handleDownloadData },
+        {
+          text: "Delete all data…",
+          style: "destructive",
+          onPress: handleDeleteData,
+        },
+        { text: "Cancel", style: "cancel" },
+      ],
+      { cancelable: true }
+    );
+  };
 
   const initials = user?.fullName
     ? user.fullName
@@ -118,7 +181,13 @@ export default function ProfileScreen() {
             <Text style={styles.chevron}>›</Text>
           </TouchableOpacity>
           <View style={styles.divider} />
-          <TouchableOpacity activeOpacity={0.7} style={styles.row}>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={styles.row}
+            onPress={handleAccountSecurity}
+            accessibilityRole="button"
+            accessibilityLabel="Account Security, download or delete data"
+          >
             <View style={styles.rowIconWrap}>
               <Text style={styles.rowIcon}>🔒</Text>
             </View>
