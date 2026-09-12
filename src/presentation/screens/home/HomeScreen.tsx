@@ -13,6 +13,7 @@ import { useTheme } from "@presentation/context/ThemeContext";
 import { useAuth } from "@presentation/context/AuthContext";
 import { useTasks } from "@presentation/context/TaskContext";
 import { useEvents } from "@presentation/context/EventContext";
+import { useUpcomingNotificationCount } from "@presentation/hooks/useUpcomingNotificationCount";
 
 // Stat cards shown in the 2x2 grid at the top of the dashboard
 const STATS = [
@@ -76,6 +77,9 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const { tasks } = useTasks();
   const { events } = useEvents();
+  // Bell badge reflects actual notifications (upcoming calendar reminders),
+  // not pending tasks, so it hides when the Notifications screen is empty.
+  const { count: notificationCount } = useUpcomingNotificationCount();
   const styles = createStyles(colors);
 
   const firstName = user?.fullName?.split(" ")[0] || "there";
@@ -178,11 +182,19 @@ export default function HomeScreen() {
           activeOpacity={0.7}
           style={styles.bellButton}
           onPress={() => navigation.navigate("Notifications")}
+          accessibilityRole="button"
+          accessibilityLabel={
+            notificationCount > 0
+              ? `${notificationCount} unread notifications`
+              : "Notifications, no unread notifications"
+          }
         >
           <Text style={styles.bellIcon}>🔔</Text>
-          {pendingTasks.length > 0 && (
+          {notificationCount > 0 && (
             <View style={styles.bellBadge}>
-              <Text style={styles.bellBadgeText}>{pendingTasks.length}</Text>
+              <Text style={styles.bellBadgeText}>
+                {notificationCount > 99 ? "99+" : String(notificationCount)}
+              </Text>
             </View>
           )}
         </TouchableOpacity>
