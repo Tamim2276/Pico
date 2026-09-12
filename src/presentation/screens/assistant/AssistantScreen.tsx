@@ -164,6 +164,7 @@ export function AssistantScreen() {
     const fastCall = matchIntent(text);
     if (fastCall) {
       setInputText("");
+      console.log("[assistant] fast-path →", fastCall.name);
       const responseText = fastCall.directMessage
         ? fastCall.directMessage
         : (await runTool(fastCall.name, fastCall.args)).message;
@@ -206,6 +207,7 @@ export function AssistantScreen() {
 
       const toolCall = parseToolCallFromGemma(raw);
       if (toolCall) {
+        console.log("[assistant] local-llm →", toolCall.name);
         const toolResult = await executeToolCallFromGemma(raw);
         const picoMessage: Message = {
           id: Date.now().toString(),

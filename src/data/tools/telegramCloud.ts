@@ -19,6 +19,7 @@ import {
   type CloudPromptInput,
   type CloudDecision,
 } from "@shared/utils/telegramParse";
+import { nemotronChat } from "@data/cloud/nemotronChat";
 
 export const NEMOTRON_MODEL = "nvidia/nemotron-3.5-lightning-30b-a3b";
 const NIM_URL = "https://integrate.api.nvidia.com/v1/chat/completions";
@@ -115,5 +116,54 @@ export async function interpretNoticesWithCloud(
     return null;
   } finally {
     clearTimeout(timer);
+  }
+}
+
+export interface SyncSummaryInput {
+  /** original notice texts that were processed */
+  notices: string[];
+  /** per-notice outcome lines from the sync (the ✅/✏️/⏭️ lines) */
+  reportLines: string[];
+  /** headline counts line, e.g. "3 notice(s) — 1 created, ..." */
+  countsLine: string;
+}
+
+const SUMMARY_MAX_CHARS = 600;
+
+/**
+ * Second Nemotron pass for this tool only: turns the mechanical sync
+ * report into a short warm summary, plus a `Note:` line ONLY if something
+ * needs the user's attention. Plain text (no JSON), warmer temperature.
+ * Only ever called when the cloud tier already succeeded — never offline,
+ * never via the local LLM. Null on any failure: caller shows the
+ * mechanical report unchanged.
+ */
+export async function summarizeSyncWithCloud(
+  input: SyncSummaryInput
+): Promise<string | null> {
+  if (input.notices.length === 0) return null;
+  const system =
+    "You are Pico, a warm personal assistant. Summarize a Telegram sync in 2-4 short lines.";
+  const user = [
+    "Notices processed:",
+    ...input.notices.slice(0, 10).map((t) => `- ${t.slice(0, 300)}`),
+    "",
+    "Sync outcome:",
+    input.countsLine,
+    ...input.reportLines.slice(0, 10).map((l) => `- ${l.slice(0, 200)}`),
+    "",
+    "Write a warm 2-4 line summary of what changed for the user. Add one `Note:` line ONLY if something needs their attention (e.g. an unmatched notice, a conflict, an ignored item) — otherwise omit it.",
+  ].join("\n");
+  try {
+    const summary = await nemotronChat(system, user, {
+      temperature: 1,
+      maxTokens: 300,
+    });
+    if (!summary || !summary.trim()) return null;
+    const trimmed = summary.trim().slice(0, SUMMARY_MAX_CHARS);
+    console.log("[telegram_cloud] summary:", trimmed.slice(0, 300));
+    return trimmed;
+  } catch {
+    return null;
   }
 }

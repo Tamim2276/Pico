@@ -18,9 +18,18 @@ export async function runTool(
 ): Promise<ToolResult> {
   const tool = getTool(name);
   if (!tool) return { ok: false, message: `Unknown tool: ${name}` };
+  console.log("[tool] →", name, JSON.stringify(args).slice(0, 200));
   try {
-    return await tool.execute(args);
+    const result = await tool.execute(args);
+    console.log(
+      "[tool] ←",
+      name,
+      result.ok ? "ok" : "fail",
+      (result.message || "").split("\n")[0].slice(0, 200)
+    );
+    return result;
   } catch (e: any) {
+    console.log("[tool] ←", name, "error", String(e?.message ?? e).slice(0, 200));
     return { ok: false, message: `"${name}" failed: ${e?.message ?? e}` };
   }
 }

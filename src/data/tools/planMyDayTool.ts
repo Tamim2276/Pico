@@ -172,7 +172,12 @@ export const planMyDayTool: Tool = {
       const sections: string[] = [];
       for (const name of toolNames) {
         try {
-          const result = await runTool(name, {});
+          // telegram_updates skips its summary pass when nested here —
+          // the skill does its own synthesis below.
+          const result = await runTool(
+            name,
+            name === "telegram_updates" ? { summarize: false } : {}
+          );
           const body = (result.message || "").slice(0, TOOL_OUTPUT_CHARS);
           sections.push(
             result.ok ? `[${name}]\n${body}` : `[${name}: UNAVAILABLE]\n${body}`

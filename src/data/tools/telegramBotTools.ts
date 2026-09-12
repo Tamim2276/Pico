@@ -10,6 +10,7 @@ import { toolSpecs } from "@data/tools/registry";
 import { runTool } from "@data/tools/dispatcher";
 import {
   interpretNoticesWithCloud,
+  summarizeSyncWithCloud,
   CLOUD_MAX_NOTICES,
 } from "@data/tools/telegramCloud";
 import {
@@ -45,7 +46,11 @@ async function getStoredOffset(): Promise<number> {
  *
  * Decision chain (telegram tool only): cloud interpreter (Nemotron, full
  * tool list) -> deterministic decider per notice. Local on-device LLM is
- * never involved on this path.
+ * never involved on this path (including the summary pass below).
+ *
+ * Pass { summarize: false } to skip the second-pass summary — used when
+ * invoked as a sub-tool (e.g. inside plan_my_day) to avoid the extra
+ * cloud round-trip.
  */
 export const telegramBotTools: Tool = {
   name: "telegram_updates",
@@ -55,7 +60,7 @@ export const telegramBotTools: Tool = {
     type: "object",
     properties: {},
   },
-  execute: async (): Promise<ToolResult> => {
+  execute: async (args: Record<string, any> = {}): Promise<ToolResult> => {
     const token = process.env.EXPO_PUBLIC_TELEGRAM_BOT_TOKEN;
     if (!token) {
       return { ok: false, message: "Missing EXPO_PUBLIC_TELEGRAM_BOT_TOKEN in .env" };
@@ -391,11 +396,26 @@ export const telegramBotTools: Tool = {
         console.log(`[telegram_updates] ${line}`);
       }
 
+      const countsLine = `${texts.length} notice(s) — ${created} created, ${updated} updated, ${ignored} ignored, ${mirrored} mirrored.`;
+      const detailBlock = lines.slice(0, 10).join("\n");
+
+      // Second Nemotron pass (cloud tier only): warm summary on top of the
+      // mechanical report. Tool execution above stays exactly the same.
+      let summary: string | null = null;
+      if (cloudTier === "ok" && texts.length > 0 && args?.summarize !== false) {
+        summary = await summarizeSyncWithCloud({
+          notices: texts,
+          reportLines: lines,
+          countsLine,
+        });
+      }
+
       return {
         ok: true,
         message:
-          `📨 Telegram sync (${cloudTier}): ${texts.length} notice(s) — ${created} created, ${updated} updated, ${ignored} ignored, ${mirrored} mirrored.\n` +
-          lines.slice(0, 10).join("\n"),
+          (summary ? `${summary}\n\n` : "") +
+          `📨 Telegram sync (${cloudTier}): ${countsLine}\n` +
+          detailBlock,
         data: {
           updates,
           offset: nextOffset,
