@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@presentation/context/ThemeContext";
 import { useTasks } from "@presentation/context/TaskContext";
 import NewTaskModal from "@presentation/components/NewTaskModal";
+import { runTool } from "@data/tools/dispatcher";
 import type { Task, Priority } from "../../domain/entities/Task";
 
 type FilterKey = "All" | "Pending" | "Completed";
@@ -41,6 +42,7 @@ export default function TasksScreen({ navigation }: Props) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<FilterKey>("All");
   const [isAddModalVisible, setAddModalVisible] = useState(false);
+  const [planning, setPlanning] = useState(false);
   const { tasks, toggleTaskCompletion, deleteTask } = useTasks();
 
   const toggleTask = (id: string) => {
@@ -249,8 +251,26 @@ export default function TasksScreen({ navigation }: Props) {
               ? `You have ${highPriorityPendingCount} high-priority task(s) active. I recommend focusing on your top priority first.`
               : `You have ${tasks.filter(t => !t.completed).length} pending task(s). Great job keeping everything organized!`}
           </Text>
-          <TouchableOpacity activeOpacity={0.7} style={styles.aiButton}>
-            <Text style={styles.aiButtonText}>Plan My Day</Text>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={[styles.aiButton, planning && { opacity: 0.6 }]}
+            onPress={async () => {
+              if (planning) return;
+              setPlanning(true);
+              try {
+                const result = await runTool("plan_my_day", {});
+                navigation.navigate("Assistant", { plan: result.message });
+              } finally {
+                setPlanning(false);
+              }
+            }}
+            disabled={planning}
+            accessibilityRole="button"
+            accessibilityLabel="Plan my day with AI"
+          >
+            <Text style={styles.aiButtonText}>
+              {planning ? "Planning…" : "Plan My Day"}
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

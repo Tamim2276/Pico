@@ -165,6 +165,16 @@ export function matchIntent(text: string): ToolCall | null {
     }
   }
 
+  // 7b. Plan My Day skill — must come before the Break Down Goal block
+  // below since "plan my day" also matches its "plan my" pattern.
+  if (
+    /\b(plan my day|plan tomorrow|plan today|what should i do today|help me plan (my|the|this) day)\b/.test(
+      t,
+    )
+  ) {
+    return { name: "plan_my_day", args: {} };
+  }
+
   // 8. Break Down Goal / Planner Fast-Path
   if (
     /\b(plan my|break down|help me plan|help me prepare for|create a plan for|generate subtasks for)\b/.test(

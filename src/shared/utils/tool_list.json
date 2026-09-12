@@ -139,5 +139,13 @@
       "type": "object",
       "properties": {}
     }
+  },
+  {
+    "name": "plan_my_day",
+    "description": "Create a personalized day plan from the user's tasks, events, weather, and context.",
+    "parameters": {
+      "type": "object",
+      "properties": {}
+    }
   }
 ]
