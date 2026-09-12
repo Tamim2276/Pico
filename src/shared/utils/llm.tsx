@@ -59,6 +59,13 @@ export const AVAILABLE_MODELS: ModelCatalogEntry[] = [
     downloadUrl:
       'https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q5_K_L.gguf?download=true',
   },
+  {
+    id: 'qwen2.5 3B Instruct',
+    displayName: 'qwen2.5_3B_Instruct',
+    fileName: 'qwen2_5_3B_instruct.gguf',
+    downloadUrl:
+      'https://huggingface.co/bartowski/Qwen2.5-3B-Instruct-GGUF/resolve/main/Qwen2.5-3B-Instruct-Q6_K_L.gguf?download=true',
+  },
 ];
 
 export const MODELS_DIR = `${RNFS.ExternalDirectoryPath}/gguf`;
