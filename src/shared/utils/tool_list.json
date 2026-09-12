@@ -134,7 +134,7 @@
   },
   {
     "name": "telegram_updates",
-    "description": "Fetch latest Telegram bot updates and log raw JSON to console.",
+    "description": "Fetch new Telegram bot notices and sync them: create tasks, create calendar events, or update matching events.",
     "parameters": {
       "type": "object",
       "properties": {}
