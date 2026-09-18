@@ -18,6 +18,7 @@ import ToolMenu from "@presentation/components/ToolMenu";
 import ModelPickerSheet from "@presentation/components/ModelPickerSheet";
 import Welcome from "@presentation/components/Welcome";
 import MessageBubble from "../../components/MessageBubble";
+import type { MessageCard } from "../../components/MessageBubble";
 import TypingIndicator from "@presentation/components/TypingIndicator";
 import { rescheduleBus } from "@data/notifications/rescheduleBus";
 import { useTasks } from "@presentation/context/TaskContext";
@@ -28,7 +29,60 @@ type Message = {
   id: string;
   role: "user" | "assistant" | "typing";
   text: string;
+  card?: MessageCard;
 };
+
+/**
+ * Builds a chat card from a tool result's shape, so route or web-search
+ * results render inline (a live OSM map, or an embedded results preview)
+ * instead of just a text sentence. Detects the shape of `data` rather
+ * than checking the tool name, so it works no matter which entry point
+ * (chat fast-path, the tools menu, or the on-device model) produced it.
+ * Returns undefined for anything that doesn't match a known card shape.
+ */
+function buildCardFromToolResult(toolResult: { ok: boolean; data?: unknown }): MessageCard | undefined {
+  if (!toolResult.ok || !toolResult.data) return undefined;
+
+  const routeData = toolResult.data as
+    | {
+        origin: { lat: number; lon: number };
+        destination: { lat: number; lon: number };
+        path: [number, number][];
+        distanceLabel: string;
+        durationLabel: string;
+        destinationLabel: string;
+      }
+    | undefined;
+
+  if (routeData?.path?.length && routeData.origin && routeData.destination) {
+    return {
+      type: "route_map",
+      title: routeData.destinationLabel,
+      subtitle: `${routeData.distanceLabel} · ${routeData.durationLabel} by car`,
+      badge: "Route",
+      badgeColor: "#3B82F6",
+      icon: "🧭",
+      route: routeData,
+    };
+  }
+
+  const webData = toolResult.data as
+    | { query: string; previewUrl: string; browserUrl: string }
+    | undefined;
+
+  if (webData?.previewUrl && webData.browserUrl) {
+    return {
+      type: "web_preview",
+      title: webData.query,
+      badge: "Web",
+      badgeColor: "#8B5CF6",
+      icon: "🔎",
+      web: webData,
+    };
+  }
+
+  return undefined;
+}
 
 // Simple sanitizer to clean up function-call tokens from Gemma output
 const sanitizeGemmaOutput = (s: string) => {
@@ -47,8 +101,9 @@ const buildToolAwarePrompt = (userText: string, telemetry: string) => [
   telemetry,
   "",
   "Instructions:",
-  "- If the user is chatting, greeting, or asking general questions (e.g. 'Hi', 'Who are you', 'What is today'), reply naturally in plain text. NEVER output JSON for general conversation.",
-  "- ONLY emit JSON when the user specifically requests an action (create task, schedule event, set timer, turn on light, daily briefing).",
+  "- If the user is chatting, greeting, or asking about Pico itself (e.g. 'Hi', 'Who are you'), reply naturally in plain text. NEVER output JSON for general conversation.",
+  "- If the user asks a factual or current-info question you don't have an exact action for — prices, release dates, current events, general knowledge, 'what/who/when/how much' questions — call answer_question. Do NOT guess the answer yourself, and do NOT force it into an unrelated tool like get_weather.",
+  "- ONLY emit JSON when the user specifically requests an action (create task, schedule event, set timer, turn on light, daily briefing, or a lookup via answer_question).",
   "",
   "Examples:",
   "User: Hi",
@@ -68,6 +123,21 @@ const buildToolAwarePrompt = (userText: string, telemetry: string) => [
   "",
   "User: What is the weather outside?",
   '{"name": "get_weather", "args": {}}',
+  "",
+  "User: What is the current price of gold?",
+  '{"name": "answer_question", "args": {"query": "current price of gold"}}',
+  "",
+  "User: When will Avengers Doomsday be released?",
+  '{"name": "answer_question", "args": {"query": "Avengers Doomsday release date"}}',
+  "",
+  "User: Who is the president of Brazil?",
+  '{"name": "answer_question", "args": {"query": "president of Brazil"}}',
+  "",
+  "User: How do I get to Gulshan 2?",
+  '{"name": "get_route", "args": {"destination": "Gulshan 2"}}',
+  "",
+  "User: Open Google Maps",
+  '{"name": "open_in_maps", "args": {"destination": ""}}',
   "",
   "User: Add a task to buy groceries tomorrow with High priority",
   '{"name": "create_task", "args": {"title": "Buy groceries", "priority": "High", "category": "Grocery"}}',
@@ -93,6 +163,11 @@ export function AssistantScreen() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [gemmaLoading, setGemmaLoading] = useState(false);
   const [modelPickerOpen, setModelPickerOpen] = useState(false);
+  // Remembers an action Pico just offered ("want me to open that for
+  // you?") so a plain "yes" can actually run it instead of being sent to
+  // the on-device model cold, which tends to hallucinate a made-up tool
+  // name when it has no real context for what "yes" refers to.
+  const [pendingAction, setPendingAction] = useState<{ name: string; args: Record<string, any> } | null>(null);
   const { tasks } = useTasks();
 
   const flatListRef = useRef<FlatList>(null);
@@ -105,13 +180,26 @@ export function AssistantScreen() {
     }
   }, [messages]);
 
-  // Push a message from Pico into the chat (used by the tools menu).
+  // Push a message from Pico into the chat (used by the reschedule bus).
   const pushAssistantMessage = (text: string) => {
     setMessages(previous =>
       previous.concat({
         id: `${Date.now().toString()}-tool`,
         role: "assistant",
         text,
+      })
+    );
+  };
+
+  // Push a tool result from the tools menu into the chat, attaching a
+  // route map card when the result has route geometry in it.
+  const pushToolMenuResult = (result: { ok: boolean; message: string; data?: unknown }) => {
+    setMessages(previous =>
+      previous.concat({
+        id: `${Date.now().toString()}-tool`,
+        role: "assistant",
+        text: result.message,
+        card: buildCardFromToolResult(result),
       })
     );
   };
@@ -140,13 +228,60 @@ export function AssistantScreen() {
       text,
     };
 
+    // 0. Pending-action follow-up — if Pico just offered to do something
+    // ("want me to open that for you?"), handle a plain yes/no directly
+    // instead of sending it cold to the on-device model, which has no way
+    // to know what "yes" refers to and tends to invent a fake tool name.
+    if (pendingAction) {
+      const isYes = /^(yes|yeah|yep|yup|sure|ok(ay)?|go ahead|do it|please|open it)\b/i.test(text);
+      const isNo = /^(no|nope|nah|never\s*mind|cancel|don'?t|forget it)\b/i.test(text);
+      const action = pendingAction;
+      setPendingAction(null);
+
+      if (isYes || isNo) {
+        setInputText("");
+        let responseText: string;
+        let card: MessageCard | undefined;
+
+        if (isYes) {
+          const toolResult = await runTool(action.name, action.args);
+          responseText = toolResult.message;
+          card = buildCardFromToolResult(toolResult);
+        } else {
+          responseText = "No problem — let me know if you need anything else.";
+        }
+
+        setMessages(prev => [
+          ...prev,
+          userMessage,
+          { id: `${baseId}-pico`, role: "assistant", text: responseText, card },
+        ]);
+        return;
+      }
+      // Neither yes nor no — treat as an unrelated new message and fall
+      // through to normal handling below (pendingAction already cleared).
+    }
+
     // 1. Layer 1 Fast-Path Router (0ms response for unambiguous commands & greetings)
     const fastCall = matchIntent(text);
     if (fastCall) {
       setInputText("");
-      const responseText = fastCall.directMessage
-        ? fastCall.directMessage
-        : (await runTool(fastCall.name, fastCall.args)).message;
+
+      let responseText: string;
+      let card: MessageCard | undefined;
+
+      if (fastCall.directMessage) {
+        responseText = fastCall.directMessage;
+      } else {
+        const toolResult = await runTool(fastCall.name, fastCall.args);
+        responseText = toolResult.message;
+        card = buildCardFromToolResult(toolResult);
+
+        const suggestedFallback = (toolResult.data as any)?.suggestedFallback;
+        if (!toolResult.ok && suggestedFallback) {
+          setPendingAction(suggestedFallback);
+        }
+      }
 
       setMessages(prev => [
         ...prev,
@@ -155,6 +290,7 @@ export function AssistantScreen() {
           id: `${baseId}-pico`,
           role: "assistant",
           text: responseText,
+          card,
         },
       ]);
       return;
@@ -191,7 +327,13 @@ export function AssistantScreen() {
           id: Date.now().toString(),
           role: "assistant",
           text: toolResult.message || "Tool finished.",
+          card: buildCardFromToolResult(toolResult),
         };
+
+        const suggestedFallback = (toolResult.data as any)?.suggestedFallback;
+        if (!toolResult.ok && suggestedFallback) {
+          setPendingAction(suggestedFallback);
+        }
 
         setMessages(previous =>
           previous
@@ -234,7 +376,7 @@ export function AssistantScreen() {
       <MeshBackground />
 
       {/* top-right hamburger with the native-tool buttons */}
-      <ToolMenu onToolResult={pushAssistantMessage} />
+      <ToolMenu onToolResult={pushToolMenuResult} />
 
       {messages.length === 0 ? (
         <Welcome />

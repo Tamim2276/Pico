@@ -13,10 +13,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { runTool } from "@data/tools/dispatcher";
 import { torchStore } from "@data/device/torchStore";
+import type { ToolResult } from "@domain/services/tools/Tool";
 
 interface ToolMenuProps {
-  /** called with Pico's reply text after a tool runs */
-  onToolResult: (text: string) => void;
+  /** called with the full tool result (message + any structured data,
+   * e.g. a route's map data) after a tool runs */
+  onToolResult: (result: ToolResult) => void;
 }
 
 type ActionKey =
@@ -40,7 +42,7 @@ interface MenuAction {
   key: ActionKey;
   label: string;
   icon: React.ReactNode;
-  run: () => Promise<{ message: string }>;
+  run: () => Promise<ToolResult>;
 }
 
 const ICON_COLOR = "#E3E3E3";
@@ -173,9 +175,9 @@ export default function ToolMenu({ onToolResult }: ToolMenuProps) {
     setBusy(action.key);
     try {
       const result = await action.run();
-      onToolResult(result.message);
+      onToolResult(result);
     } catch (e: any) {
-      onToolResult(`Something went wrong: ${e?.message ?? e}`);
+      onToolResult({ ok: false, message: `Something went wrong: ${e?.message ?? e}` });
     } finally {
       setBusy(null);
       setOpen(false);

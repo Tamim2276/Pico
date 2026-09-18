@@ -1,13 +1,17 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
+import RouteMapView, { RouteMapData } from "./RouteMapView";
+import WebPreviewCard, { WebPreviewData } from "./WebPreviewCard";
 
 export type MessageCard = {
-  type: "task_created" | "event_created" | "battery" | "general_card";
+  type: "task_created" | "event_created" | "battery" | "general_card" | "route_map" | "web_preview";
   title?: string;
   subtitle?: string;
   badge?: string;
   badgeColor?: string;
   icon?: string;
+  route?: RouteMapData;
+  web?: WebPreviewData;
 };
 
 export type Message = {
@@ -167,6 +171,14 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
                 </View>
               ))}
             </View>
+          )}
+
+          {cardInfo.type === "route_map" && cardInfo.route && (
+            <RouteMapView route={cardInfo.route} />
+          )}
+
+          {cardInfo.type === "web_preview" && cardInfo.web && (
+            <WebPreviewCard preview={cardInfo.web} />
           )}
         </View>
       ) : (

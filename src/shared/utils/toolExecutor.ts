@@ -1,11 +1,12 @@
 import { runTool } from "@data/tools/dispatcher";
+import type { ToolResult } from "@domain/services/tools/Tool";
 
 export type ParsedToolCall = {
   name: string;
   args: Record<string, any>;
 };
 
-const TOOL_ARG_MODE: Record<string, "none" | "flashlight" | "create_task" | "create_event" | "mark_task_completed" | "break_down_goal" | "set_timer" | "get_weather"> = {
+const TOOL_ARG_MODE: Record<string, "none" | "flashlight" | "create_task" | "create_event" | "mark_task_completed" | "break_down_goal" | "set_timer" | "get_weather" | "answer_question" | "passthrough"> = {
   toggle_flashlight: "flashlight",
   battery_status: "none",
   read_calendar: "none",
@@ -19,6 +20,11 @@ const TOOL_ARG_MODE: Record<string, "none" | "flashlight" | "create_task" | "cre
   break_down_goal: "break_down_goal",
   set_timer: "set_timer",
   get_weather: "get_weather",
+  answer_question: "answer_question",
+  get_route: "passthrough",
+  open_in_maps: "passthrough",
+  search_youtube: "passthrough",
+  search_web: "passthrough",
 };
 
 const extractFirstBalancedJsonObject = (text: string): string | null => {
@@ -155,6 +161,25 @@ const normalizeArgsForTool = (
     };
   }
 
+  if (mode === "answer_question") {
+    let rawQuery = "";
+    if (typeof args.query === "string" && args.query.trim()) rawQuery = args.query;
+    else if (typeof args.question === "string" && args.question.trim()) rawQuery = args.question;
+    else if (typeof args.topic === "string" && args.topic.trim()) rawQuery = args.topic;
+
+    return { query: rawQuery.trim() };
+  }
+
+  if (mode === "passthrough") {
+    // Simple single-arg tools (destination/query strings) — no special
+    // parsing needed, just trim whatever string fields came through.
+    const out: Record<string, any> = {};
+    for (const [key, value] of Object.entries(args)) {
+      out[key] = typeof value === "string" ? value.trim() : value;
+    }
+    return out;
+  }
+
   return {};
 };
 
@@ -254,15 +279,12 @@ export const parseToolCallFromGemma = (raw: string): ParsedToolCall | null => {
 
 export const executeToolCallFromGemma = async (
   raw: string,
-): Promise<{ ok: boolean; message: string }> => {
+): Promise<ToolResult> => {
   const toolCall = parseToolCallFromGemma(raw);
   if (!toolCall) {
     return { ok: false, message: "" };
   }
 
   const result = await runTool(toolCall.name, toolCall.args);
-  return {
-    ok: result.ok,
-    message: result.message,
-  };
+  return result;
 };

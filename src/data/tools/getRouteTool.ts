@@ -37,19 +37,14 @@ async function geocode(place: string): Promise<LatLon | null> {
 
   const res = await fetch(url);
   if (!res.ok) {
-    console.warn(
-      `[getRouteTool] geocode("${place}") failed: HTTP ${res.status}`,
-    );
+    console.warn(`[getRouteTool] geocode("${place}") failed: HTTP ${res.status}`);
     return null;
   }
 
   const json = await res.json();
   const feature = json?.features?.[0];
   if (!feature) {
-    console.warn(
-      `[getRouteTool] geocode("${place}") returned no results`,
-      json,
-    );
+    console.warn(`[getRouteTool] geocode("${place}") returned no results`, json);
     return null;
   }
 
@@ -89,8 +84,7 @@ export const getRouteTool: Tool = {
     properties: {
       origin: {
         type: "string",
-        description:
-          "Starting place/address. Leave empty to use the device's current location.",
+        description: "Starting place/address. Leave empty to use the device's current location.",
       },
       destination: {
         type: "string",
@@ -132,7 +126,7 @@ export const getRouteTool: Tool = {
       const osrmUrl =
         `https://router.project-osrm.org/route/v1/driving/` +
         `${originPoint.lon},${originPoint.lat};${destPoint.lon},${destPoint.lat}` +
-        `?overview=false`;
+        `?overview=full&geometries=geojson`;
 
       const res = await fetch(osrmUrl);
       const json = await res.json();
@@ -148,6 +142,12 @@ export const getRouteTool: Tool = {
       const distance = formatDistance(route.distance);
       const duration = formatDuration(route.duration);
 
+      // OSRM/GeoJSON gives [lon, lat] pairs — flip to [lat, lon] since
+      // that's what map libraries like Leaflet expect.
+      const path: [number, number][] = (route.geometry?.coordinates ?? []).map(
+        ([lon, lat]: [number, number]) => [lat, lon]
+      );
+
       return {
         ok: true,
         message:
@@ -156,15 +156,16 @@ export const getRouteTool: Tool = {
         data: {
           distanceMeters: route.distance,
           durationSeconds: route.duration,
+          distanceLabel: distance,
+          durationLabel: duration,
+          destinationLabel: dest,
           origin: originPoint,
           destination: destPoint,
+          path,
         },
       };
     } catch (e: any) {
-      return {
-        ok: false,
-        message: `Couldn't get directions: ${e?.message ?? e}`,
-      };
+      return { ok: false, message: `Couldn't get directions: ${e?.message ?? e}` };
     }
   },
 };
